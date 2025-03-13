@@ -8,7 +8,7 @@ const ALLOWED_TITLE_FIELD_TYPES = [
   "Link",
   "Linked Field",
   "Select",
-]; 
+];
 
 frappe.ui.form.on("Engagement Form", {
   setup(frm) {
@@ -32,7 +32,7 @@ frappe.ui.form.on("Engagement Form", {
       };
     });
   },
-  refresh(frm) { 
+  refresh(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
       // force all forms to have web-form enabled
       frappe.model.set_value(
@@ -113,7 +113,7 @@ frappe.ui.form.on("Engagement Form", {
           ],
         };
       }
-    ); 
+    );
     frm.events.show_qrcode(frm);
   },
   onload_post_render(frm) {
@@ -162,9 +162,9 @@ frappe.ui.form.on("Engagement Form", {
     frappe.call({
       method:
         "participatory_backend.engage.doctype.engagement_form.engagement_form.make_engagement",
-      args: { 
+      args: {
         form_name: frm.doc.name,
-        description: frm.doc.description,
+        description: frm.doc.description || frm.doc.name,
       },
       callback: (r) => {
         if (r.message) {
@@ -179,9 +179,13 @@ frappe.ui.form.on("Engagement Form", {
     if (!frm.doc.__islocal && !frm.doc.field_is_table && frm.doc.qr_code) {
       template = `<img src="${frm.doc.qr_code}" width="240px"/>`;
     }
-    frm.set_df_property('qr_code_preview', 'options', frappe.render_template(template));
-    frm.refresh_field('qr_code_preview');
-  }
+    frm.set_df_property(
+      "qr_code_preview",
+      "options",
+      frappe.render_template(template)
+    );
+    frm.refresh_field("qr_code_preview");
+  },
 });
 
 frappe.ui.form.on("Engagement Form Field", {
@@ -189,7 +193,7 @@ frappe.ui.form.on("Engagement Form Field", {
     // debugger;
     frm.trigger("field_type", cdt, cdn);
     const fld = frm.cur_grid.get_field("set_depends_on");
-    fld.$input.addClass("btn btn-link"); 
+    fld.$input.addClass("btn btn-link");
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -341,24 +345,23 @@ frappe.ui.form.on("Engagement Form Field", {
   },
 });
 
-
 function edit_filters(frm, doctype, existing_filters, on_add_filter) {
-   let field_doctype = doctype;
-   //   const { frm } = store;
-   make_filters_dialog(frm, on_add_filter);
+  let field_doctype = doctype;
+  //   const { frm } = store;
+  make_filters_dialog(frm, on_add_filter);
 
-   make_filters_area(frm, field_doctype);
-   frappe.model.with_doctype(field_doctype, () => {
-     frm.dialog.show();
+  make_filters_area(frm, field_doctype);
+  frappe.model.with_doctype(field_doctype, () => {
+    frm.dialog.show();
     //  add_existing_filter(frm, child);
 
-     if (existing_filters) {
-       let filters = JSON.parse(existing_filters);
-       if (filters) {
-         frm.filter_group.add_filters_to_filter_group(filters);
-       }
-     }
-   });
+    if (existing_filters) {
+      let filters = JSON.parse(existing_filters);
+      if (filters) {
+        frm.filter_group.add_filters_to_filter_group(filters);
+      }
+    }
+  });
 }
 
 function edit_filters_link(frm, child) {
@@ -377,7 +380,7 @@ const set_title_field_options = function (frm) {
   let label_val = "";
   const fields = [];
   frm.doc.form_fields?.forEach((field) => {
-    if(ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
+    if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
       fields.push({
         label: field.field_label,
         value: field.field_label,
@@ -468,7 +471,7 @@ function make_filters_dialog(frm, /*child,*/ on_add_filter) {
   });
 }
 
-function make_filters_area(frm, doctype) { 
+function make_filters_area(frm, doctype) {
   frm.filter_group = new frappe.ui.FilterGroup({
     parent: frm.dialog.get_field("filter_area").$wrapper,
     doctype: doctype,
@@ -509,33 +512,34 @@ function add_existing_filter(frm, child) {
  * @param {*} condition e.g [["Test Form Five","sample_gender","=","Male"]]
  */
 const convert_conditions_to_js_format = (conditions) => {
-  if(condition.length <= 0){
+  if (condition.length <= 0) {
     return "";
   }
-  let res = "eval:"
-  for(var i = 0; i< conditions.length; i++) {
+  let res = "eval:";
+  for (var i = 0; i < conditions.length; i++) {
     const condition = conditions[i];
     console.log("Filter: ", condition);
-    res += '(' + construct_js_expression(condition) + ')';
+    res += "(" + construct_js_expression(condition) + ")";
     if (i != conditions.length - 1) {
       exp += " && ";
     }
   }
   return res;
-}
+};
 
 /**
  * Construct a JS expression given a filter
  * @param {*} condition e.g ["Test Form Five","sample_gender","=","Male"]
  */
 const construct_js_expression = (condition) => {
-  if(condition.length < 4) { // condition has 4 parts
+  if (condition.length < 4) {
+    // condition has 4 parts
     return "";
   }
   const field = condition[1];
   const operator = condition[2];
   const value = condition[3];
-  let exp = ''; 
+  let exp = "";
   switch (operator) {
     case "=":
       exp = `doc.${field}==${value}`;
@@ -550,33 +554,32 @@ const construct_js_expression = (condition) => {
       exp = `doc.${field}.indexOf(${value}) == -1`;
       break;
     case "in":
-      exp += ''
-      for(var i = 0; i < value.length; i++){
-        exp += `doc.${field} == ${value[i]}`; 
+      exp += "";
+      for (var i = 0; i < value.length; i++) {
+        exp += `doc.${field} == ${value[i]}`;
         if (i != value.length - 1) {
-          exp += ' || '
+          exp += " || ";
         }
       }
       break;
     case "not in":
-       exp += "";
-       for (var i = 0; i < value.length; i++) {
-         exp += `doc.${field} != ${value[i]}`;
-         if (i != value.length - 1) {
-           exp += " && ";
-         }
-       }
+      exp += "";
+      for (var i = 0; i < value.length; i++) {
+        exp += `doc.${field} != ${value[i]}`;
+        if (i != value.length - 1) {
+          exp += " && ";
+        }
+      }
       break;
     case "is":
-      if(value == 'Set'){
+      if (value == "Set") {
         exp = `doc.${field}`;
-      } 
-      else{
+      } else {
         exp = `!doc.${field}`;
-      } 
+      }
       break;
     case ">":
-       exp = `doc.${field}>${value}`;
+      exp = `doc.${field}>${value}`;
       break;
     case "<":
       exp = `doc.${field}<${value}`;
@@ -594,4 +597,4 @@ const construct_js_expression = (condition) => {
       break;
   }
   return exp;
-}
+};

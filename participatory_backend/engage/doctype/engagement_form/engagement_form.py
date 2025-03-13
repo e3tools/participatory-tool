@@ -35,18 +35,20 @@ LINK_FIELD_DOC_FILTER_PATTERN = re.compile(r'(\"|\')(doc\..*?)(\"|\')')
 WEB_FORM_LINK_FIELD_DOC_FILTER_PATTERN = re.compile(r'(\"|\')(web_form_values\..*?)(\"|\')')
 DOC_PREFIX_FORMULA = 'doc.'
 
-class CascadeFilter:
+class FieldFilter:
 	source_field: str
 	target_field: str
 	# filters_plain: str
 	filters_parsed: list
-	depends_on_form_field_value: bool # does the filter depend on values specified in the current form_field
+	depends_on_form_field_value: bool # does the filter depend on values specified in the current form_field 
 
 class ReadOnlyField:
 	parent_doctype: str
 	parent_property: str
 	parent_field: str
 	target_field: str
+	is_target_a_child_table: int
+	target_child_table_doctype: str
 
 NEWLINE = '\r\n'
 OPEN_BRACKET = "{"
@@ -103,7 +105,7 @@ class EngagementForm(Document):
 			key = ''.join(random.SystemRandom().choice(string.ascii_uppercase) for _ in range(10))
 			self.form_key = key # make_autoname("hash") . do not use make_autoname since it may generate a series starting with a number which should not be the first letter of a doctype name
 
-		self.link_filters_map: list[type[CascadeFilter]] = []
+		self.link_filters_map: list[type[FieldFilter]] = []
 		self.read_only_fields_map: list[type[ReadOnlyField]] = []
 		self.form_name = frappe.unscrub(self.form_name)
 		if not self.form_fields:
@@ -234,6 +236,9 @@ class EngagementForm(Document):
 				field.parent_property = fld.linked_form_property
 				field.parent_field = fld.linked_form
 				field.target_field = fld.field_name
+				is_table, a, b, x, target_child_table_doctype, z, = self.is_linked_field_a_child_table(fld)
+				field.is_target_a_child_table = 1 if is_table else 0
+				field.target_child_table_doctype = target_child_table_doctype
 				self.read_only_fields_map.append(field) 
 
 	def validate_linked_fields(self):
@@ -369,8 +374,9 @@ class EngagementForm(Document):
 
 		return filters
 	 
-	def make_web_form_on_change_link_function(self, field: EngagementFormField): #, filter_map: list[type[CascadeFilter]]):
-		"""Make an on change function for Web Form for handling change of the field values. 
+	def make_web_form_on_change_link_function(self, field: EngagementFormField): #, filter_map: list[type[FieldFilter]]):
+		"""
+		Make an on change function for Web Form for handling change of the field values. 
 		This is especially so for cascaded filters 
 		"""
 		if not field.field_filters_plain:
@@ -384,7 +390,7 @@ class EngagementForm(Document):
 			for match in matches: 
 				filterVal = match[1]
 				# filters = re.sub(r'(\"|\')' + filterVal + '(\"|\')', filterVal, filter_str) 
-				fltr = CascadeFilter()
+				fltr = FieldFilter()
 				fltr.source_field = filterVal.replace(DOC_PREFIX_FORMULA, '')
 				fltr.target_field = field.field_name
 				fltr.filters_parsed = filter
@@ -395,7 +401,7 @@ class EngagementForm(Document):
 		# filters = frappe.safe_eval(field.field_filters_plain) # will return values e.g [['Admin 2', 'parent_admin', '=', 'doc.admin_1']]
 		for filter in parsed_filters:
 			if str(filter[3]).find(DOC_PREFIX_FORMULA) == -1: # there is no occurrence of doc.
-				fltr = CascadeFilter()
+				fltr = FieldFilter()
 				fltr.target_field = field.field_name
 				fltr.source_field = None # filterVal.replace(DOC_PREFIX_FORMULA, '') # no source_field. This is an absolute filter value
 				fltr.filters_parsed = filter 
@@ -634,7 +640,8 @@ class EngagementForm(Document):
 	def is_linked_field_a_child_table(self, field) -> tuple[bool, str, str, str, str, str]:
 		"""
 		Return true if the linked field property is a child table 
-		Returns: tuple[bool, str, str, str, str]: Returns (
+
+		Returns: tuple[bool, str, str, str, str]:
 			bool: Whether this linked property references a Child Table field
 			trigger_field_name: Field whose value will determine the values to query
 			trigger_field_doctype: Doctype linked to Trigger Field
@@ -711,7 +718,9 @@ class EngagementForm(Document):
 				target = frappe.get_doc("DocType", target_doctype)
 			
 			source = frappe.get_doc("DocType", source_doctype)
-		
+			if not source.istable:
+				frappe.throw("Row {0}. {1}. The specified linked field property is not a child form".format(field.idx, field.field_label))
+
 			for fld in source.fields: 
 				fld_dict = fld.as_dict()
 				del fld_dict['name']
@@ -720,6 +729,7 @@ class EngagementForm(Document):
 				del fld_dict['parent']
 				del fld_dict['creation']
 				del fld_dict['modified']
+				fld_dict['reqd'] = False # do this to avoid a situation where data will not be saved if some fields had been earlier missed
 				if not exists:
 					target.append('fields', fld_dict)
 				else:
@@ -766,7 +776,7 @@ class EngagementForm(Document):
 			# try replicate the structure of the doctype if it does not exist
 			new_child_table_name = f'{self.form_key} {frappe.unscrub(field.field_name)}' 
 			new_child_table_name = new_child_table_name[:55] # clip to 55 characters
-			_make_child_doctype(trigger_field_doctype, new_child_table_name)
+			_make_child_doctype(trigger_field_grid_doctype, new_child_table_name)
 			_make_client_script(trigger_field_name, trigger_field_doctype, trigger_field_grid_name, target_field)
 			return new_child_table_name
 		return None
@@ -1083,54 +1093,112 @@ class EngagementForm(Document):
 					"""
 			
 			def _make_readonly_trigger(source_field: str):
-				# check if there are other fields that should reset their values when the value of this field changes
+				"""
+				Check if there are other fields that should reset their values when the value of this field changes
+				"""
 				readonly_fields = [frappe._dict(x.__dict__) for x in self.read_only_fields_map if x.parent_field == source_field]
 				script = ""
 				if readonly_fields:
+					target_field = readonly_fields[0].target_field
 					doctype = readonly_fields[0].parent_doctype
 					parent_field = readonly_fields[0].parent_field
 					parent_fields = [x.parent_property for x in readonly_fields]
+					target_child_table_grid_doctype = readonly_fields[0].target_child_table_doctype
 					# readonly_filter = [readonly_fields[0].parent_doctype, 'name', '=', frappe.web_form.get_value(readonly_fields[0].parent_field)]
 					script = """
 					const readonly_fields={readonly_fields};
 					// reset the dependent values
 					for (var i = 0; i < readonly_fields.length; i++) {{  
 						const target_field = readonly_fields[i].target_field;
-						frappe.web_form.set_value(target_field, '');
-					}} 
-
-					frappe.call({{
-						method:"participatory_backend.api.get_list",
-						args: {{
-							doctype: '{parent_doctype}',
-							filters: [['{parent_doctype}', 'name', '=', frappe.web_form.get_value('{parent_field}')]],
-							fields: {parent_fields},
-							limit_page_length: 0,
-							order_by: "name",
-						}},
-						callback: (r) => {{
-							if (r.message && r.message.length > 0) {{
-							for (var i = 0; i < readonly_fields.length; i++) {{  
-								const target_field = readonly_fields[i].target_field;
-								const val = r.message[0][readonly_fields[i].parent_property]
-								frappe.web_form.set_value(target_field, val);
-							}} 
-						  }}
-						}}
-					  }});
-					""".format( 
+						if(readonly_fields[i].is_target_a_child_table) {{
+							frappe.web_form.set_value(target_field, []);
+						}} else {{
+							frappe.web_form.set_value(target_field, '');
+						}}						
+					}}""".format( 
 							parent_fields=parent_fields,
 							parent_doctype=doctype,
 							parent_field=parent_field,
 							readonly_fields=readonly_fields)
+
+					if readonly_fields[0].is_target_a_child_table:
+						script += """
+							frappe.web_form.doc.{target_field} = []; // rest as we wait to load from backend
+							frappe.web_form.doc.{target_field}.splice(0);
+							const web_form_values = frappe.web_form.get_values(true, false);
+
+							frappe.call({{
+								method:"participatory_backend.api.get_list",
+								args: {{
+									doctype: '{target_child_table_grid_doctype}',
+									filters: [
+												['{target_child_table_grid_doctype}', 'parenttype', '=', '{parent_doctype}'],
+												['{target_child_table_grid_doctype}', 'parent', '=', frappe.web_form.get_value('{parent_field}')],
+											],
+									fields: {parent_fields},
+									limit_page_length: 0,
+									order_by: "idx",
+								}},
+								callback: (r) => {{
+									frappe.web_form.doc.{target_field} = [];
+									let items = [];
+									if (r.message) {{
+										items = r.message;  
+									}}
+									items.forEach((item) => {{
+										['name', 'parent', 'parentfield', 'parenttype', 'doctype', 
+										 'creation', 'owner', 'modified', 'modified_by', 'docstatus'].forEach((key) => {{
+											delete item[key]; // remove the values linked to source doc 
+										}});
+										item['__islocal'] = true;
+										item['row_name'] = `row ${{String(item.idx)}}`;
+										frappe.web_form.doc.{target_field}.push(item)
+									}});
+									frappe.web_form.get_field('{target_field}').refresh();
+								
+							}}
+						}});
+						""".format( 
+								parent_fields=["*"],
+								parent_doctype=doctype,
+								parent_field=parent_field,
+								readonly_fields=readonly_fields,
+								target_field=target_field,
+								target_child_table_grid_doctype=target_child_table_grid_doctype) 
+					else:
+						script += """
+							frappe.call({{
+								method:"participatory_backend.api.get_list",
+								args: {{
+									doctype: '{parent_doctype}',
+									filters: [['{parent_doctype}', 'name', '=', frappe.web_form.get_value('{parent_field}')]],
+									fields: {parent_fields},
+									limit_page_length: 0,
+									order_by: "name",
+								}},
+								callback: (r) => {{
+									if (r.message && r.message.length > 0) {{
+									for (var i = 0; i < readonly_fields.length; i++) {{  
+										const target_field = readonly_fields[i].target_field;
+										const val = r.message[0][readonly_fields[i].parent_property]
+										frappe.web_form.set_value(target_field, val);
+									}} 
+								}}
+							}}
+						}});
+						""".format( 
+								parent_fields=parent_fields,
+								parent_doctype=doctype,
+								parent_field=parent_field,
+								readonly_fields=readonly_fields)
 				return script
 			
 			def _make_filter_functions():
 				"""
-				Make different functions to handle change of parent fields
+				Make different functions to handle change of trigger fields
 				"""
 				field_scripts = ''
-				if len(self.link_filters_map) > 0:
+				if len(self.link_filters_map) > 0 or len(self.read_only_fields_map) > 0:
 					# First make the functions for target fields. Later make triggers for source fields
 					# get unique targets
 					target_fields = set([x.target_field for x in self.link_filters_map])
@@ -1170,7 +1238,7 @@ class EngagementForm(Document):
 											readonly_fields_script=readonly_script
 											) + '\n\n' + field_scripts 
 
-					child_table_filters = _make_filter_query_for_child_table_links()
+					child_table_filters = _make_filter_query_for_child_table_link_fields()
 					# ensure trigger functions are called on load
 					if trigger_functions:
 						on_load_script = """frappe.web_form.after_load = () => { """
@@ -1252,7 +1320,10 @@ class EngagementForm(Document):
 					   readonly_fields_script=readonly_fields_script)
 			return func
 		
-		def _make_filter_query_for_child_table_links():
+		def _make_filter_query_for_child_table_link_fields():
+			"""
+			Make a function to handle filters set for link fields in child tables
+			"""
 			triggers = []
 			for table in [x for x in self.form_fields if x.field_type == 'Table']:
 				child_form = frappe.get_doc("Engagement Form", table.field_child_doctype)

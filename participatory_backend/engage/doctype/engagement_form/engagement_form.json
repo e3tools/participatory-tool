@@ -24,6 +24,7 @@
   "settings_tab",
   "show_title_field_in_link",
   "title_field",
+  "form_key",
   "tab_2_tab",
   "form_permissions",
   "form_design_permissions",
@@ -230,6 +231,7 @@
   {
    "fieldname": "form_design_permissions",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Permissions For Design Of This Form",
    "options": "Engagement Form Permission"
   },
@@ -266,13 +268,20 @@
    "fieldname": "show_watermark_image",
    "fieldtype": "Check",
    "label": "Show watermark image"
+  },
+  {
+   "description": "A random generated key that identifies the form. This is system generated",
+   "fieldname": "form_key",
+   "fieldtype": "Data",
+   "label": "Form Key",
+   "read_only": 1
   }
  ],
  "hide_toolbar": 1,
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-03 08:32:52.170867",
+ "modified": "2025-03-13 11:16:49.410295",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
