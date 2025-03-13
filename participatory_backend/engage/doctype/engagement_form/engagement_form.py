@@ -415,19 +415,20 @@ class EngagementForm(Document):
 		def _create_script(script):
 			doc = frappe.get_doc({
 				"doctype": "Client Script",
-				"__newname": f'{self.form_name}',
-				"dt": self.form_name,			
+				"__newname": f'{doctype}',
+				"dt": doctype,			
 				"view": "Form",
 				"enabled": True,
 				"module": MODULE_NAME,
 				"script": script
 			}).insert(ignore_permissions=True)
- 
+
+		doctype = self.name
 		# delete scripts in case they exist
-		frappe.db.delete("Client Script", {"dt": self.form_name})
+		frappe.db.delete("Client Script", {"dt": doctype})
 		# make client Script
 		filter_fields = [x for x in self.form_fields if x.field_filters_plain and x.field_type in ALLOWED_FILTER_FIELD_TYPES] 
-		full_script = f'frappe.ui.form.on("{self.form_name}", {OPEN_BRACKET}{NEWLINE}onload: function(frm) {OPEN_BRACKET}'
+		full_script = f'frappe.ui.form.on("{doctype}", {OPEN_BRACKET}{NEWLINE}onload: function(frm) {OPEN_BRACKET}'
 		for field in filter_fields:
 			filter = '''frm.set_query("{field_name}", function() {open_bracket}
 					return {open_bracket}
@@ -466,7 +467,7 @@ class EngagementForm(Document):
 		# check data consent
 		validate = ''
 		if cint(self.show_data_processing_consent_statement):
-			validate += f'''{NEWLINE}
+			validate += f''',{NEWLINE}
 						validate: function(frm){OPEN_BRACKET}
 							if(!frm.doc.grant_data_processing_consent) {OPEN_BRACKET}
 								frappe.throw("You must agree to grant data processing consent");
