@@ -194,6 +194,7 @@ frappe.ui.form.on("Engagement Form Field", {
     frm.trigger("field_type", cdt, cdn);
     const fld = frm.cur_grid.get_field("set_depends_on");
     fld.$input.addClass("btn btn-link");
+    frm.trigger("make_additional_child_table_fields", cdt, cdn);
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -342,6 +343,107 @@ frappe.ui.form.on("Engagement Form Field", {
         );
       }
     );
+  },
+  make_additional_child_table_fields: function (frm, cdt, cdn) {
+    // see https://discuss.frappe.io/t/is-there-any-way-i-can-add-child-table-inside-a-child-table/116188/12
+    let child_row = locals[cdt][cdn];
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+
+    if (!dialog) return;
+
+    let wrapper = dialog.fields_dict.additional_linked_table_fields.wrapper;
+    wrapper.replaceChildren();
+
+    let field_group = new frappe.ui.FieldGroup({
+      fields: [
+        {
+          fieldtype: "HTML",
+          fieldname: "grandchild_table",
+          in_place_edit: true,
+          options:
+            "Additional fields to add to a linked table field. Set this only when the value of <strong>Field in the Linked Form</strong> field is of type Table",
+        },
+        {
+          fieldtype: "Table",
+          fieldname: "grandchild_table",
+          in_place_edit: true,
+          data: JSON.parse(child_row.additional_linked_table_fields || "[]"),
+          fields: [
+            {
+              fieldname: "label",
+              label: "Label",
+              fieldtype: "Data",
+              in_list_view: 1,
+              reqd: 1,
+              columns: 2,
+            },
+            {
+              fieldname: "fieldname",
+              label: "Field ID",
+              fieldtype: "Data",
+              in_list_view: 1,
+              reqd: 0,
+              columns: 2,
+            },
+            {
+              fieldname: "fieldtype",
+              label: "Type",
+              fieldtype: "Select",
+              options: [
+                "Attach",
+                "Attach Image",
+                "Check",
+                "Currency",
+                "Data",
+                "Date",
+                "Datetime",
+                "HTML",
+                "Int",
+                "Float",
+                "Geolocation",
+                "Link",
+                "Select",
+                "Text",
+                "Text Editor",
+                "Time",
+              ],
+              in_list_view: 1,
+              reqd: 1,
+              columns: 2,
+            },
+            {
+              fieldname: "reqd",
+              label: "Required",
+              fieldtype: "Check",
+              in_list_view: 1,
+              reqd: 0,
+              columns: 2,
+            },
+            {
+              fieldname: "options",
+              label: "Options",
+              fieldtype: "Link",
+              options: "DocType",
+              link_filters: '[["DocType","istable","=",0]]',
+              in_list_view: 1,
+              columns: 2,
+            },
+          ],
+          get_data: () => field_group.get_value("grandchild_table"),
+        },
+      ],
+      body: wrapper,
+    });
+
+    field_group.make();
+
+    // Update the JSON field whenever the table changes
+    field_group.fields_dict.grandchild_table.grid.wrapper.on("change", () => {
+      child_row.additional_linked_table_fields = JSON.stringify(
+        field_group.get_value("grandchild_table")
+      );
+      frm.dirty();
+    });
   },
 });
 

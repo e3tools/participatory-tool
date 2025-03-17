@@ -14,6 +14,7 @@ class EngagementFormField(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		additional_linked_table_fields: DF.JSON | None
 		data_field_html: DF.TextEditor | None
 		data_field_options: DF.Literal["", "Email", "Phone", "URL"]
 		depends_on: DF.Data | None

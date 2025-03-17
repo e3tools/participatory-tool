@@ -21,6 +21,7 @@
   "field_filters",
   "field_precision",
   "data_field_html",
+  "additional_linked_table_fields",
   "column_break_ikco",
   "field_reqd",
   "field_readonly",
@@ -300,12 +301,18 @@
    "fieldname": "field_hidden",
    "fieldtype": "Check",
    "label": "Hidden"
+  },
+  {
+   "depends_on": "eval:in_list([\"Linked Field\"], doc.field_type) && doc.linked_form_property",
+   "fieldname": "additional_linked_table_fields",
+   "fieldtype": "JSON",
+   "label": "Additional Linked Table Fields"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-05 20:34:32.546890",
+ "modified": "2025-03-17 05:18:43.310020",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",

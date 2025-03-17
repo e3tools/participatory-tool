@@ -250,6 +250,17 @@ class EngagementForm(Document):
 		"""
 		Validate that the linked field references an existing field and that the property exists in the referenced doctype 
 		"""
+		def _validate_additional_fields():
+			"""
+			Validate additional fields that user may have specified
+			"""
+			# check that 3the options value if valid
+			if field.additional_linked_table_fields:
+				for i, fld in enumerate(list(json.loads(field.additional_linked_table_fields))):
+					if fld['fieldtype'] == 'Link':
+						if not frappe.db.exists("DocType", fld['options'].strip()):
+							frappe.throw(f"Row {field.idx}. The form specified [{fld.options}] in additional fields in row {i+1} does not exist")
+
 		linked_form = field.linked_form
 		parent_forms = [x for x in self.form_fields if x.field_name == linked_form]
 		form = ''
@@ -262,7 +273,8 @@ class EngagementForm(Document):
 		form = frappe.get_doc("DocType", form)
 		if not [x for x in form.fields if x.fieldname == docfield]:
 			frappe.throw(_("Row {0}. The specified linked form propery {1} does not exist in form {2}".format(field.idx, field.linked_form_property, linked_form)))
- 
+		_validate_additional_fields()
+
 	def _get_naming_rule(self):
 		"""
 		Get naming rule 
@@ -613,7 +625,7 @@ class EngagementForm(Document):
 				# create a child table which is to be reference as options for the field
 				child_table = self.handle_child_table_read_only_field(form_field)
 				options = child_table
-				readonly = True
+				# readonly = True
 
 		field = {
 			'doctype': 'DocField', 
@@ -705,8 +717,16 @@ class EngagementForm(Document):
 	def handle_child_table_read_only_field(self, field: EngagementFormField):
 		"""
 		Handle a scenario where a read-only field is of type Table
-		"""
+		"""		
 		def _make_child_doctype(source_doctype: str, target_doctype: str):
+			def _set_field(fld):
+				existing_indices  = [index for (index, item) in enumerate(target.fields) if item.fieldname == fld.fieldname]
+				if not existing_indices:
+					target.append('fields', fld)
+				else:
+					idx = existing_indices[0]
+					target.fields[idx].update(fld)
+
 			exists = frappe.db.exists("DocType", target_doctype)
 			target = None
 			if not exists:
@@ -731,11 +751,24 @@ class EngagementForm(Document):
 				del fld_dict['creation']
 				del fld_dict['modified']
 				fld_dict['reqd'] = False # do this to avoid a situation where data will not be saved if some fields had been earlier missed
-				if not exists:
-					target.append('fields', fld_dict)
-				else:
-					if not [x for x in target.fields if x.fieldname == fld.fieldname]:
-						target.append('fields', fld_dict)
+				fld_dict['columns'] = 2 # set columns as 2 to try maximize on having more columns visible
+				_set_field(fld_dict) 
+
+			if field.additional_linked_table_fields:
+				for col in list(json.loads(field.additional_linked_table_fields)):
+					if 'fieldtype' not in col or not col['fieldtype']:
+						frappe.throw(_(f'You must specify the field type for additional field {col["idx"]}'))
+					if not col['label'] and not col['fieldname']:
+						frappe.throw(_(f'You must specify either the label or the field id for additional field for {col["idx"]}'))
+					del col['idx']
+					del col['name']
+					del col['__islocal']
+					col['fieldname'] = col['fieldname'] if 'fieldname' in col else scrub(col['label'])
+					col['columns'] = 2 # set columns as 2 to try maximize on having more columns visible
+					col['in_list_view'] = True #make additional fields visible in Grid View by default
+					if col['fieldtype'] == 'Currency':
+						col['precision'] = '2' 
+					_set_field(frappe._dict(col))
 			
 			target.save()
 	
@@ -1590,9 +1623,9 @@ def get_docfields(doctype):
 		{
 			'parenttype': 'DocType', 'parent': doctype
 		},
-		['name', 'fieldname', 'label'],
+		['name', 'fieldname', 'label', 'fieldtype', 'options'],
 	)
-	docs = [{'fieldname': r.fieldname, 'label': r.label} for r in res] 
+	docs = [{'fieldname': r.fieldname, 'label': r.label, 'fieldtype': r.fieldtype, 'options': r.options} for r in res] 
 	return [d for d in docs] 
 
 @frappe.whitelist()
