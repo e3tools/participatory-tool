@@ -250,17 +250,7 @@ class EngagementForm(Document):
 		"""
 		Validate that the linked field references an existing field and that the property exists in the referenced doctype 
 		"""
-		def _validate_additional_fields():
-			"""
-			Validate additional fields that user may have specified
-			"""
-			# check that 3the options value if valid
-			if field.additional_linked_table_fields:
-				for i, fld in enumerate(list(json.loads(field.additional_linked_table_fields))):
-					if fld['fieldtype'] == 'Link':
-						if not frappe.db.exists("DocType", fld['options'].strip()):
-							frappe.throw(f"Row {field.idx}. The form specified [{fld.options}] in additional fields in row {i+1} does not exist")
-
+		
 		linked_form = field.linked_form
 		parent_forms = [x for x in self.form_fields if x.field_name == linked_form]
 		form = ''
@@ -273,7 +263,6 @@ class EngagementForm(Document):
 		form = frappe.get_doc("DocType", form)
 		if not [x for x in form.fields if x.fieldname == docfield]:
 			frappe.throw(_("Row {0}. The specified linked form propery {1} does not exist in form {2}".format(field.idx, field.linked_form_property, linked_form)))
-		_validate_additional_fields()
 
 	def _get_naming_rule(self):
 		"""
@@ -727,6 +716,28 @@ class EngagementForm(Document):
 					idx = existing_indices[0]
 					target.fields[idx].update(fld)
 
+			def _validate_additional_fields():
+				"""
+				Validate additional fields that user may have specified
+				"""
+				# check that 3the options value if valid
+				if field.additional_linked_table_fields:
+					for i, fld in enumerate(list(json.loads(field.additional_linked_table_fields))):
+						if fld['fieldtype'] == 'Link':
+							val = frappe.db.get_value("DocType", {"name": fld['options'].strip()}, ['name', 'istable'], as_dict=True)
+							if not val:
+								frappe.throw(f"Row {field.idx}. The form specified [{fld['options']}] in additional fields row {i+1} does not exist")
+							if val.istable == True:
+								frappe.throw(f"Row {field.idx}. The form specified [{fld['options']}] in additional fields row {i+1} is a Child Table. You can only link Main Forms")
+						if fld['fieldtype'] == 'Select':
+							choices = fld['options']
+							if not choices.strip().startswith("\n"):
+								fld['options'] = '\n' + str(choices).strip("\n")
+							if choices.strip() == '':
+								frappe.throw(f"Row {field.idx}. You must specify the choices for the additional Select Field [{i+1}]")
+
+
+
 			exists = frappe.db.exists("DocType", target_doctype)
 			target = None
 			if not exists:
@@ -755,6 +766,7 @@ class EngagementForm(Document):
 				_set_field(fld_dict) 
 
 			if field.additional_linked_table_fields:
+				_validate_additional_fields()
 				for col in list(json.loads(field.additional_linked_table_fields)):
 					if 'fieldtype' not in col or not col['fieldtype']:
 						frappe.throw(_(f'You must specify the field type for additional field {col["idx"]}'))

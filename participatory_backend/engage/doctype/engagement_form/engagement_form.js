@@ -421,9 +421,7 @@ frappe.ui.form.on("Engagement Form Field", {
             {
               fieldname: "options",
               label: "Options",
-              fieldtype: "Link",
-              options: "DocType",
-              link_filters: '[["DocType","istable","=",0]]',
+              fieldtype: "Small Text",
               in_list_view: 1,
               columns: 2,
             },
