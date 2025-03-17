@@ -397,7 +397,6 @@ frappe.ui.form.on("Engagement Form Field", {
                 "Data",
                 "Date",
                 "Datetime",
-                "HTML",
                 "Int",
                 "Float",
                 "Geolocation",
