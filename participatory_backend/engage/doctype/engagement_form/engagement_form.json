@@ -25,6 +25,7 @@
   "show_title_field_in_link",
   "title_field",
   "form_key",
+  "make_attachments_public",
   "tab_2_tab",
   "form_permissions",
   "form_design_permissions",
@@ -275,13 +276,20 @@
    "fieldtype": "Data",
    "label": "Form Key",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "If you intend to view attachments by other users, ensure this option is checked",
+   "fieldname": "make_attachments_public",
+   "fieldtype": "Check",
+   "label": "Make Attachments Public by Default"
   }
  ],
  "hide_toolbar": 1,
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-13 11:16:49.410295",
+ "modified": "2025-03-18 11:35:25.174748",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

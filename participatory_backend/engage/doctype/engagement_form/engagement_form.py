@@ -77,6 +77,7 @@ class EngagementForm(Document):
 		form_name: DF.Data
 		form_permissions: DF.Table[EngagementFormPermission]
 		include_logo_in_web_form: DF.Check
+		make_attachments_public: DF.Check
 		naming_field: DF.Data | None
 		naming_format: DF.Data | None
 		public_url: DF.Data | None
@@ -332,6 +333,7 @@ class EngagementForm(Document):
 		doc.track_changes = 1
 		doc.allow_import = 1
 		doc.hide_toolbar = 1
+		doc.make_attachments_public = self.make_attachments_public
 		doc.istable = self.field_is_table
 		self._set_roles(doc)
 		self._set_states(doc)
