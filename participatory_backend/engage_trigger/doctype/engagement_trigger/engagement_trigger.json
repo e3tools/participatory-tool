@@ -1,0 +1,176 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:trigger_name",
+ "creation": "2025-05-26 04:51:22.011004",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "trigger_name",
+  "engagement_form",
+  "enabled",
+  "column_break_tdqs",
+  "condition",
+  "html_gmzx",
+  "section_break_eymk",
+  "activate_trigger_on",
+  "column_break_fxad",
+  "change_field",
+  "trigger_outcomes_section",
+  "outcome_type",
+  "column_break_czzx",
+  "related_form",
+  "field_linking_forms",
+  "section_break_oyyg",
+  "set_property_after_trigger_items",
+  "section_break_jerd",
+  "related_form_field_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "trigger_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trigger Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "engagement_form",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Engagement Form",
+   "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
+   "options": "Engagement Form",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "activate_trigger_on",
+   "fieldtype": "Select",
+   "label": "Activate Trigger On",
+   "options": "\nNew\nValue Change",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_tdqs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional: The trigger will be activated if this expression is true. If left blank, the trigger will apply to all records for the specified form",
+   "fieldname": "condition",
+   "fieldtype": "Small Text",
+   "label": "Condition"
+  },
+  {
+   "fieldname": "trigger_outcomes_section",
+   "fieldtype": "Section Break",
+   "label": "Trigger Outcomes"
+  },
+  {
+   "fieldname": "outcome_type",
+   "fieldtype": "Select",
+   "label": "Outcome Type",
+   "options": "\nUpdate Current Record\nCreate Another Form Record\nUpdate Another Form Record",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
+   "fieldname": "related_form",
+   "fieldtype": "Link",
+   "label": "Related Form To Be Created/Updated  ",
+   "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
+   "mandatory_depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
+   "options": "Engagement Form"
+  },
+  {
+   "fieldname": "column_break_czzx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.activate_trigger_on=='Value Change'",
+   "description": "The trigger will be activated when this field's value changes",
+   "fieldname": "change_field",
+   "fieldtype": "Select",
+   "label": "Field ",
+   "mandatory_depends_on": "eval:doc.activate_trigger_on=='Value Change'"
+  },
+  {
+   "fieldname": "section_break_oyyg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.outcome_type=='Update Current Record'",
+   "description": "These fields will be updated after the trigger has been activated",
+   "fieldname": "set_property_after_trigger_items",
+   "fieldtype": "Table",
+   "label": "Set Property After Trigger",
+   "options": "Engagement Trigger Update Form Field Item"
+  },
+  {
+   "fieldname": "html_gmzx",
+   "fieldtype": "HTML",
+   "options": "<p><strong>Condition Examples:</strong></p>\n<pre>doc.status==\"Open\"<br>doc.due_date==nowdate()<br>doc.total &gt; 40000\n</pre>\n"
+  },
+  {
+   "fieldname": "section_break_eymk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_fxad",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_jerd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
+   "fieldname": "related_form_field_items",
+   "fieldtype": "Table",
+   "label": "Related Form Fields To Update/Initialize",
+   "mandatory_depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
+   "options": "Engagement Trigger Related Form Item"
+  },
+  {
+   "depends_on": "eval:in_list(['Update Another Form Record'], doc.outcome_type)",
+   "fieldname": "field_linking_forms",
+   "fieldtype": "Select",
+   "label": "Field Linking Current And Related Forms",
+   "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
+   "mandatory_depends_on": "eval:in_list(['Update Another Form Record'], doc.outcome_type)"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-05-27 13:19:16.143766",
+ "modified_by": "Administrator",
+ "module": "Engage Trigger",
+ "name": "Engagement Trigger",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
