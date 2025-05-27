@@ -11,7 +11,8 @@
   "entered_by",
   "column_break_94j1",
   "entered_on",
-  "status"
+  "status",
+  "client_entry_id"
  ],
  "fields": [
   {
@@ -55,11 +56,18 @@
   {
    "fieldname": "column_break_94j1",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "client_entry_id",
+   "fieldtype": "Data",
+   "label": "Client Entry ID",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-05-09 21:21:29.780111",
+ "modified": "2025-04-19 03:18:20.744316",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Entry",
@@ -115,6 +123,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
