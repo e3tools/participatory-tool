@@ -172,15 +172,15 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Engagement Form",
-   "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
    "mandatory_depends_on": "eval:doc.has_data_forms",
    "options": "Engagement Form"
   }
  ],
+ "grid_page_length": 50,
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-11 20:47:36.625062",
+ "modified": "2025-04-10 11:49:53.245619",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement",
@@ -221,6 +221,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

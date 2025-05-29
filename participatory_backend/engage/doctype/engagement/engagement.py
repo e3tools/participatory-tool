@@ -7,6 +7,34 @@ from frappe.model.document import Document
 from frappe.utils import cint
 
 class Engagement(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		closing_date: DF.Date | None
+		cover_image: DF.AttachImage | None
+		data_forms_template: DF.Link | None
+		description: DF.SmallText
+		engagement_form: DF.Link | None
+		engagement_name: DF.Data
+		engagement_type: DF.Literal["", "Survey", "Submission", "Guestbook", "Stories", "Q&A", "Quick Poll", "Ideas", "Discussion Forum", "Map"]
+		has_data_forms: DF.Check
+		has_discussion_forum: DF.Check
+		has_formal_submissions: DF.Check
+		has_guestbook: DF.Check
+		has_ideas: DF.Check
+		has_map: DF.Check
+		has_qa: DF.Check
+		include_quick_poll: DF.Check
+		is_published: DF.Check
+		question: DF.Link | None
+		quick_poll: DF.Link | None
+		status: DF.Literal["Open", "Closed"]
+	# end: auto-generated types
 	ENGAGEMENT_ENTRY_FIELD = 'engagement_entry'
 	ENGAGEMENT_ENTRY_STATUS_FIELD = 'engagement_entry_status'
 	def validate(self):

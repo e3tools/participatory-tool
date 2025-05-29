@@ -42,7 +42,7 @@ app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 # Generators
@@ -56,8 +56,8 @@ app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 
 # add methods and filters to jinja environment
 # jinja = {
-#	"methods": "participatory_backend.utils.jinja_methods",
-#	"filters": "participatory_backend.utils.jinja_filters"
+# 	"methods": "participatory_backend.utils.jinja_methods",
+# 	"filters": "participatory_backend.utils.jinja_filters"
 # }
 
 # Installation
@@ -83,11 +83,11 @@ app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 # Permissions evaluated in scripted ways
 
 # permission_query_conditions = {
-#	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
+# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
 # }
 #
 # has_permission = {
-#	"Event": "frappe.desk.doctype.event.event.has_permission",
+# 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 
 # DocType Class
@@ -95,7 +95,7 @@ app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 # Override standard doctype classes
 
 # override_doctype_class = {
-#	"ToDo": "custom_app.overrides.CustomToDo"
+# 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 
 # Document Events
@@ -103,48 +103,51 @@ app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 # Hook on document methods and events
 
 # doc_events = {
-#	"*": {
-#		"on_update": "method",
-#		"on_cancel": "method",
-#		"on_trash": "method"
-#	}
+# 	"*": {
+# 		"on_update": "method",
+# 		"on_cancel": "method",
+# 		"on_trash": "method"
+# 	}
 # }
 
 doc_events = {
     "Shape File": {
         # "before_save": "participatory_backend.event_handler.before_save_shape_file"
     },
+    "*": {
+        # "after_insert": "participatory_backend.engage_trigger.triggers_util.run_triggers",
+        "on_update": "participatory_backend.engage_trigger.triggers_util.run_triggers",
+    },
 }
 
 scheduler_events = {
-	"all": [		 
-	],  
-  "cron": {
-        "0/1 * * * *": [ #run every 1 minute.
-           "participatory_backend.tasks.generate_user_api_keys", 
-        ], 
-	}
+    "all": [],
+    "cron": {
+        "0/1 * * * *": [  # run every 1 minute.
+            "participatory_backend.tasks.generate_user_api_keys",
+        ],
+    },
 }
 
 # Scheduled Tasks
 # ---------------
 
 # scheduler_events = {
-#	"all": [
-#		"participatory_backend.tasks.all"
-#	],
-#	"daily": [
-#		"participatory_backend.tasks.daily"
-#	],
-#	"hourly": [
-#		"participatory_backend.tasks.hourly"
-#	],
-#	"weekly": [
-#		"participatory_backend.tasks.weekly"
-#	],
-#	"monthly": [
-#		"participatory_backend.tasks.monthly"
-#	],
+# 	"all": [
+# 		"participatory_backend.tasks.all"
+# 	],
+# 	"daily": [
+# 		"participatory_backend.tasks.daily"
+# 	],
+# 	"hourly": [
+# 		"participatory_backend.tasks.hourly"
+# 	],
+# 	"weekly": [
+# 		"participatory_backend.tasks.weekly"
+# 	],
+# 	"monthly": [
+# 		"participatory_backend.tasks.monthly"
+# 	],
 # }
 
 # Testing
@@ -156,14 +159,14 @@ scheduler_events = {
 # ------------------------------
 #
 # override_whitelisted_methods = {
-#	"frappe.desk.doctype.event.event.get_events": "participatory_backend.event.get_events"
+# 	"frappe.desk.doctype.event.event.get_events": "participatory_backend.event.get_events"
 # }
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
 # override_doctype_dashboards = {
-#	"Task": "participatory_backend.task.get_dashboard_data"
+# 	"Task": "participatory_backend.task.get_dashboard_data"
 # }
 
 # exempt linked doctypes from being automatically cancelled
@@ -192,31 +195,31 @@ export_python_type_annotations = True
 # --------------------
 
 # user_data_fields = [
-#	{
-#		"doctype": "{doctype_1}",
-#		"filter_by": "{filter_by}",
-#		"redact_fields": ["{field_1}", "{field_2}"],
-#		"partial": 1,
-#	},
-#	{
-#		"doctype": "{doctype_2}",
-#		"filter_by": "{filter_by}",
-#		"partial": 1,
-#	},
-#	{
-#		"doctype": "{doctype_3}",
-#		"strict": False,
-#	},
-#	{
-#		"doctype": "{doctype_4}"
-#	}
+# 	{
+# 		"doctype": "{doctype_1}",
+# 		"filter_by": "{filter_by}",
+# 		"redact_fields": ["{field_1}", "{field_2}"],
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_2}",
+# 		"filter_by": "{filter_by}",
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_3}",
+# 		"strict": False,
+# 	},
+# 	{
+# 		"doctype": "{doctype_4}"
+# 	}
 # ]
 
 # Authentication and authorization
 # --------------------------------
 
 # auth_hooks = [
-#	"participatory_backend.auth.validate"
+# 	"participatory_backend.auth.validate"
 # ]
 
 CUSTOM_ROLES = (
@@ -224,66 +227,46 @@ CUSTOM_ROLES = (
     "Form Design Manager",
     "Technical Data User",
     "Technical Data Manager",
-    "Data Capture"
+    "Data Capture",
 )
 
-fixtures = [  
-  {
-    "doctype":"Custom Field", 
-    "filters": [
-      ["fieldname", "in", (
-                    "engagement_entry", "engagement_entry_status"
-                   )
-      ],
-      ["dt", "in", (
-                    "Shape File",  
-                   )
-      ]
-    ]
-  },
-  {
-      "doctype": "Custom DocPerm",
-      "filters": [
-          [
-              "role", "in", CUSTOM_ROLES
-          ]
-      ]
-  },
-  {
-      "doctype": "Role",
-      "filters": [
-          [
-              "name", "in", CUSTOM_ROLES
-          ]
-      ]
-  },
-  # {
-  #   "doctype":"PCRA Form"
-  # },
-  # {
-  #   "doctype":"Resource Type"
-  # },
-  # {
-  #   "doctype":"Hazard Type"
-  # },
-  # {
-  #   "doctype":"Hazard Exposure Object"
-  # },
-  # {
-  #   "doctype":"Administrative Level"
-  # },
-  # {
-  #   "doctype":"Process Type"
-  # },
-  # {
-  #   "doctype":"Vulnerable Group"
-  # },
-#   {
-#     "doctype":"Workspace",
-#     "filters": [
-#           [
-#               "name", "in", ["Engage"]
-#           ]
-#       ]
-#   },
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["fieldname", "in", ("engagement_entry", "engagement_entry_status")],
+            ["dt", "in", ("Shape File",)],
+        ],
+    },
+    {"doctype": "Custom DocPerm", "filters": [["role", "in", CUSTOM_ROLES]]},
+    {"doctype": "Role", "filters": [["name", "in", CUSTOM_ROLES]]},
+    # {
+    #   "doctype":"PCRA Form"
+    # },
+    # {
+    #   "doctype":"Resource Type"
+    # },
+    # {
+    #   "doctype":"Hazard Type"
+    # },
+    # {
+    #   "doctype":"Hazard Exposure Object"
+    # },
+    # {
+    #   "doctype":"Administrative Level"
+    # },
+    # {
+    #   "doctype":"Process Type"
+    # },
+    # {
+    #   "doctype":"Vulnerable Group"
+    # },
+    #   {
+    #     "doctype":"Workspace",
+    #     "filters": [
+    #           [
+    #               "name", "in", ["Engage"]
+    #           ]
+    #       ]
+    #   },
 ]
