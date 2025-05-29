@@ -12,6 +12,7 @@
   "column_break_tdqs",
   "condition",
   "html_gmzx",
+  "set_condition",
   "section_break_eymk",
   "activate_trigger_on",
   "column_break_fxad",
@@ -24,7 +25,24 @@
   "section_break_oyyg",
   "set_property_after_trigger_items",
   "section_break_jerd",
-  "related_form_field_items"
+  "related_form_field_items",
+  "post_trigger_communication_tab",
+  "send_communication",
+  "filters_section",
+  "channel",
+  "subject",
+  "column_break_rsoy",
+  "send_system_notification",
+  "sender",
+  "sender_email",
+  "recipients_section",
+  "recipients",
+  "message_section",
+  "message",
+  "message_examples",
+  "printing_section",
+  "attach_print",
+  "print_format"
  ],
  "fields": [
   {
@@ -83,7 +101,7 @@
    "depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
    "fieldname": "related_form",
    "fieldtype": "Link",
-   "label": "Related Form To Be Created/Updated  ",
+   "label": "Related Form To Be Created/Updated",
    "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
    "mandatory_depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
    "options": "Engagement Form"
@@ -97,7 +115,7 @@
    "description": "The trigger will be activated when this field's value changes",
    "fieldname": "change_field",
    "fieldtype": "Select",
-   "label": "Field ",
+   "label": "Changed Field ",
    "mandatory_depends_on": "eval:doc.activate_trigger_on=='Value Change'"
   },
   {
@@ -144,12 +162,117 @@
    "label": "Field Linking Current And Related Forms",
    "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
    "mandatory_depends_on": "eval:in_list(['Update Another Form Record'], doc.outcome_type)"
+  },
+  {
+   "fieldname": "set_condition",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "<font color=\"primary\"><b>Set Conditions </b></font>"
+  },
+  {
+   "fieldname": "post_trigger_communication_tab",
+   "fieldtype": "Tab Break",
+   "label": "Communication"
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "label": "Channel",
+   "options": "Email\nSMS"
+  },
+  {
+   "depends_on": "eval: in_list(['Email', 'Slack', 'System Notification'], doc.channel)",
+   "description": "To add dynamic subject, use jinja tags like\n\n<div><pre><code>{{ doc.name }} Delivered</code></pre></div>",
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject",
+   "mandatory_depends_on": "eval: in_list(['Email', 'Slack', 'System Notification'], doc.channel)"
+  },
+  {
+   "fieldname": "column_break_rsoy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, the notification will show up in the notifications dropdown on the top right corner of the navigation bar.",
+   "fieldname": "send_system_notification",
+   "fieldtype": "Check",
+   "label": "Send System Notification"
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
+   "fieldname": "message_section",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Code",
+   "label": "Message",
+   "options": "Jinja"
+  },
+  {
+   "fieldname": "message_examples",
+   "fieldtype": "HTML",
+   "label": "Message Examples",
+   "options": "<h5>Message Example</h5>\n\n<pre>&lt;h3&gt;Order Overdue&lt;/h3&gt;\n\n&lt;p&gt;Transaction {{ doc.name }} has exceeded Due Date. Please take necessary action.&lt;/p&gt;\n\n&lt;!-- show last comment --&gt;\n{% if comments %}\nLast comment: {{ comments[-1].comment }} by {{ comments[-1].by }}\n{% endif %}\n\n&lt;h4&gt;Details&lt;/h4&gt;\n\n&lt;ul&gt;\n&lt;li&gt;Customer: {{ doc.customer }}\n&lt;li&gt;Amount: {{ doc.grand_total }}\n&lt;/ul&gt;\n</pre>"
+  },
+  {
+   "fieldname": "printing_section",
+   "fieldtype": "Section Break",
+   "label": "Printing"
+  },
+  {
+   "default": "0",
+   "fieldname": "attach_print",
+   "fieldtype": "Check",
+   "label": "Attach Print"
+  },
+  {
+   "depends_on": "eval:doc.attach_print",
+   "fieldname": "print_format",
+   "fieldtype": "Link",
+   "label": "Print Format",
+   "options": "Print Format"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_communication",
+   "fieldtype": "Check",
+   "label": "Send Communication"
+  },
+  {
+   "fieldname": "sender",
+   "fieldtype": "Link",
+   "label": "Sender",
+   "options": "Email Account"
+  },
+  {
+   "fieldname": "sender_email",
+   "fieldtype": "Data",
+   "label": "Sender Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recipients_section",
+   "fieldtype": "Section Break",
+   "label": "Recipients"
+  },
+  {
+   "fieldname": "recipients",
+   "fieldtype": "Table",
+   "label": "Recipients",
+   "options": "Engage Trigger Recipient Item"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-27 13:19:16.143766",
+ "modified": "2025-05-29 23:06:37.084212",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
