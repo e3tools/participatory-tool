@@ -166,7 +166,9 @@ class EngagementForm(Document):
         self.publish_form()
 
     def validate_prefix(self):
-        has_special_xters = re.findall(r"[^a-zA-Z0-9\-]", self.record_id_prefix or "")
+        has_special_xters = re.findall(
+            r"[^a-zA-Z0-9\-\\\/]", self.record_id_prefix or ""
+        )
         if has_special_xters:
             frappe.throw(
                 _(
