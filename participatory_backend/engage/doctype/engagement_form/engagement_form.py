@@ -8,7 +8,11 @@ from frappe import _
 import datetime
 from frappe.desk.form.linked_with import get as get_links
 from frappe.desk.form.linked_with import get_linked_docs, get_linked_doctypes
-from participatory_backend.utils.common import get_initials, scrub
+from participatory_backend.utils.common import (
+    get_initials,
+    scrub,
+    strip_special_characters,
+)
 from participatory_backend.utils.translator import generate_form_translations
 import json
 import ast
@@ -148,6 +152,7 @@ class EngagementForm(Document):
         self.web_title = self.web_title or ""
         if not self.web_title:
             self.web_title = self.form_name
+        self.validate_prefix()
         self.validate_fields()
         self.route = (
             self.get_route()
@@ -159,6 +164,16 @@ class EngagementForm(Document):
             self.enable_web_form = False
         self.generate_image_fields()
         self.publish_form()
+
+    def validate_prefix(self):
+        has_special_xters = re.findall(r"[^a-zA-Z0-9\-]", self.record_id_prefix)
+        if has_special_xters:
+            frappe.throw(
+                _(
+                    "The record id prefix contains illegal characters:"
+                    + str(has_special_xters)
+                )
+            )
 
     def generate_image_fields(self):
         if not self.field_is_table:
@@ -263,8 +278,12 @@ class EngagementForm(Document):
         for fld in self.form_fields:
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
-            if not fld.field_name:
+            if not fld.field_name:  # when field has not been set
                 fld.field_name = scrub(fld.field_label)
+            elif hasattr(fld, "__islocal") and fld.get(
+                "__islocal"
+            ):  # if its a new field, then replace special characters. do not modify names for existing fields as it may lead to data loss
+                fld.field_name = strip_special_characters(fld.field_name, True)
             fld.field_name = fld.field_name.lower()
             if fld.field_type in ["Link", "Table MultiSelect"]:
                 # Table MultiSelect are associated with Non-Table DocTypes. The system will handle creation of corresponding child tables
