@@ -190,11 +190,13 @@ frappe.ui.form.on("Engagement Form", {
 
 frappe.ui.form.on("Engagement Form Field", {
   form_render: function (frm, cdt, cdn) {
-    // debugger;
     frm.trigger("field_type", cdt, cdn);
     const fld = frm.cur_grid.get_field("set_depends_on");
-    fld.$input.addClass("btn btn-link");
-    frm.trigger("make_additional_child_table_fields", cdt, cdn);
+    if (fld) {
+      fld.$input.addClass("btn btn-link");
+    }
+    // frm.trigger("make_additional_child_table_fields", cdt, cdn);
+
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -350,6 +352,8 @@ frappe.ui.form.on("Engagement Form Field", {
     let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
 
     if (!dialog) return;
+
+    debugger;
 
     let wrapper = dialog.fields_dict.additional_linked_table_fields.wrapper;
     wrapper.replaceChildren();
@@ -529,7 +533,6 @@ function make_filters_dialog(frm, /*child,*/ on_add_filter) {
         // filter[0] = field_option;
         return filter;
       });
-
       let link_filters = JSON.stringify(filters);
 
       on_add_filter(link_filters);
