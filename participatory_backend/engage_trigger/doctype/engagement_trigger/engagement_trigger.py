@@ -22,9 +22,15 @@ class EngagementTrigger(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import EngageTriggerRecipientItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import EngagementTriggerRelatedFormItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import EngagementTriggerUpdateFormFieldItem
+        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import (
+            EngageTriggerRecipientItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import (
+            EngagementTriggerRelatedFormItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import (
+            EngagementTriggerUpdateFormFieldItem,
+        )
 
         activate_trigger_on: DF.Literal["", "New", "Value Change"]
         attach_print: DF.Check
@@ -35,7 +41,12 @@ class EngagementTrigger(Document):
         engagement_form: DF.Link
         field_linking_forms: DF.Literal[None]
         message: DF.Code | None
-        outcome_type: DF.Literal["", "Update Current Record", "Create Another Form Record", "Update Another Form Record"]
+        outcome_type: DF.Literal[
+            "",
+            "Update Current Record",
+            "Create Another Form Record",
+            "Update Another Form Record",
+        ]
         print_format: DF.Link | None
         recipients: DF.Table[EngageTriggerRecipientItem]
         related_form: DF.Link | None
@@ -248,7 +259,7 @@ class EngagementTrigger(Document):
         if self.sender and self.sender_email:
             sender = formataddr((self.sender, self.sender_email))
 
-        recipients = [x for x in recipients if x == "stevenyaga@gmail.com"]
+        # recipients = [x for x in recipients if x == "stevenyaga@gmail.com"]
         communication = None
         # Add mail notification to communication list
         # No need to add if it is already a communication.

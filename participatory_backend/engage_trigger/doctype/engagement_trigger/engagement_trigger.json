@@ -38,6 +38,7 @@
   "recipients_section",
   "recipients",
   "message_section",
+  "column_break_trxz",
   "message",
   "message_examples",
   "printing_section",
@@ -127,7 +128,8 @@
    "description": "These fields will be updated after the trigger has been activated",
    "fieldname": "set_property_after_trigger_items",
    "fieldtype": "Table",
-   "label": "Set Property After Trigger",
+   "label": "Fields To Update After Activating Trigger",
+   "mandatory_depends_on": "eval:doc.outcome_type=='Update Current Record'",
    "options": "Engagement Trigger Update Form Field Item"
   },
   {
@@ -213,6 +215,7 @@
    "fieldname": "message",
    "fieldtype": "Code",
    "label": "Message",
+   "mandatory_depends_on": "eval:doc.send_communication",
    "options": "Jinja"
   },
   {
@@ -267,12 +270,17 @@
    "fieldtype": "Table",
    "label": "Recipients",
    "options": "Engage Trigger Recipient Item"
+  },
+  {
+   "fieldname": "column_break_trxz",
+   "fieldtype": "Column Break",
+   "mandatory_depends_on": "eval:doc.send_communication"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-29 23:06:37.084212",
+ "modified": "2025-06-11 00:10:44.304916",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
