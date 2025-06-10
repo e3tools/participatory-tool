@@ -166,7 +166,7 @@ class EngagementForm(Document):
         self.publish_form()
 
     def validate_prefix(self):
-        has_special_xters = re.findall(r"[^a-zA-Z0-9\-]", self.record_id_prefix)
+        has_special_xters = re.findall(r"[^a-zA-Z0-9\-]", self.record_id_prefix or "")
         if has_special_xters:
             frappe.throw(
                 _(
@@ -174,6 +174,16 @@ class EngagementForm(Document):
                     + str(has_special_xters)
                 )
             )
+
+        if self.is_new():
+            has_special_xters = re.findall(r"[^a-zA-Z0-9\s]", self.form_name or "")
+            if has_special_xters:
+                frappe.throw(
+                    _(
+                        "The engagement form name contains illegal characters:"
+                        + str(has_special_xters)
+                    )
+                )
 
     def generate_image_fields(self):
         if not self.field_is_table:
