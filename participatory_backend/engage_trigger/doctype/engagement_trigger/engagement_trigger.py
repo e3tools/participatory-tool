@@ -22,11 +22,17 @@ class EngagementTrigger(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import EngageTriggerRecipientItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import EngagementTriggerRelatedFormItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import EngagementTriggerUpdateFormFieldItem
+        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import (
+            EngageTriggerRecipientItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import (
+            EngagementTriggerRelatedFormItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import (
+            EngagementTriggerUpdateFormFieldItem,
+        )
 
-        activate_trigger_on: DF.Literal["", "New", "Value Change"]
+        activate_trigger_on: DF.Literal["", "New", "Value Change", "Time Lapse"]
         attach_print: DF.Check
         change_field: DF.Literal[None]
         channel: DF.Literal["Email", "SMS"]
@@ -34,8 +40,15 @@ class EngagementTrigger(Document):
         enabled: DF.Check
         engagement_form: DF.Link
         field_linking_forms: DF.Literal[None]
+        form_group: DF.Data | None
         message: DF.Code | None
-        outcome_type: DF.Literal["", "Update Current Record", "Create Another Form Record", "Update Another Form Record"]
+        outcome_type: DF.Literal[
+            "",
+            "None",
+            "Update Current Record",
+            "Create Another Form Record",
+            "Update Another Form Record",
+        ]
         print_format: DF.Link | None
         recipients: DF.Table[EngageTriggerRecipientItem]
         related_form: DF.Link | None
@@ -60,6 +73,20 @@ class EngagementTrigger(Document):
                 frappe.throw(
                     _("Related Form cannot be the same as the Engagement Form")
                 )
+        # check that if the selected outcome is None, we must set communicate to true
+        if self.enabled and self.outcome_type == "None" and not self.send_communication:
+            frappe.throw(
+                _(
+                    "When the outcome type is None, you must enable send communication. Else disable the trigger"
+                )
+            )
+
+        if self.activate_trigger_on == "Time Lapse" and not self.condition:
+            frappe.throw(
+                _(
+                    "When the Activate Trigger On is Time Lapse, you must specify the condition(s)"
+                )
+            )
 
     def run_trigger(self, doc: Document):
         def validate_field_exists(doctype: str, fieldname: str):

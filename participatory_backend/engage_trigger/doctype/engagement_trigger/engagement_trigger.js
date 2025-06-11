@@ -1,5 +1,7 @@
 // Copyright (c) 2025, Steve Nyaga and contributors
 // For license information, please see license.txt
+cur_frm.add_fetch("engagement_form", "form_group", "form_group");
+
 let UPDATEABLE_TYPES = [
   "Data",
   "Text",

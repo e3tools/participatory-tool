@@ -8,6 +8,7 @@
  "field_order": [
   "trigger_name",
   "engagement_form",
+  "form_group",
   "enabled",
   "column_break_tdqs",
   "condition",
@@ -15,6 +16,7 @@
   "set_condition",
   "section_break_eymk",
   "activate_trigger_on",
+  "html_bnao",
   "column_break_fxad",
   "change_field",
   "trigger_outcomes_section",
@@ -49,7 +51,6 @@
   {
    "fieldname": "trigger_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Trigger Name",
    "reqd": 1,
    "unique": 1
@@ -58,6 +59,7 @@
    "fieldname": "engagement_form",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Engagement Form",
    "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]",
    "options": "Engagement Form",
@@ -73,7 +75,7 @@
    "fieldname": "activate_trigger_on",
    "fieldtype": "Select",
    "label": "Activate Trigger On",
-   "options": "\nNew\nValue Change",
+   "options": "\nNew\nValue Change\nTime Lapse",
    "reqd": 1
   },
   {
@@ -95,7 +97,7 @@
    "fieldname": "outcome_type",
    "fieldtype": "Select",
    "label": "Outcome Type",
-   "options": "\nUpdate Current Record\nCreate Another Form Record\nUpdate Another Form Record",
+   "options": "\nNone\nUpdate Current Record\nCreate Another Form Record\nUpdate Another Form Record",
    "reqd": 1
   },
   {
@@ -275,12 +277,25 @@
   {
    "fieldname": "column_break_trxz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "form_group",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Form Group",
+   "link_filters": "[[\"Engagement Form\",\"field_is_table\",\"=\",0]]"
+  },
+  {
+   "fieldname": "html_bnao",
+   "fieldtype": "HTML",
+   "options": "<ul>\n<li>\n<strong style=\"color:red;\">New</strong>. Fires whenever a new record is created\n</li>\n<li>\n<strong style=\"color:red;\">Value Change</strong>. Fires whenever a value of an existing record change\n</li>\n<li><strong style=\"color:red;\">Time Lapse</strong>. Fires whenever a specific time is arrived or when a specific period has lapsed or a specific period is remaining. E.g trigger whenever specific number of days are remaining against a specific date field value. For example notify whenever a record is about to expire. <span style=\"color:blue;\"><strong>Ensure you set date based conditions in the conditions field<strong></strong></strong></span></li><strong><strong>\n</strong></strong></ul>"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-11 13:45:39.801128",
+ "modified": "2025-06-11 21:07:42.386706",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
@@ -298,6 +313,15 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Guest",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",
