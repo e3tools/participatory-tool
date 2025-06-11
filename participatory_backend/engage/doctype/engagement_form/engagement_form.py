@@ -346,7 +346,8 @@ class EngagementForm(Document):
                     z,
                 ) = self.is_linked_field_a_child_table(fld)
                 field.is_target_a_child_table = 1 if is_table else 0
-                field.target_child_table_doctype = target_child_table_doctype
+                if target_child_table_doctype:
+                    field.target_child_table_doctype = target_child_table_doctype
                 self.read_only_fields_map.append(field)
 
     def validate_linked_fields(self):
