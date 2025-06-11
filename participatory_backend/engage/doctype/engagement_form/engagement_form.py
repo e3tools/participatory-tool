@@ -1817,9 +1817,10 @@ class EngagementForm(Document):
             "web_form_fields": [],
             "button_label": "Submit",
             "route": self.get_route(),
-            "allow_incomplete": (
-                True if backend_only_fields else False
-            ),  # only allow incomplete if there are backend only fields
+            "allow_incomplete": 1,
+            # "allow_incomplete": (
+            #     True if backend_only_fields else False
+            # ),  # only allow incomplete if there are backend only fields
             "banner_image": (
                 self.form_image if cint(self.include_logo_in_web_form) else None
             ),
