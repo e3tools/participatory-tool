@@ -240,6 +240,7 @@
    "fieldname": "print_format",
    "fieldtype": "Link",
    "label": "Print Format",
+   "mandatory_depends_on": "eval:doc.attach_print",
    "options": "Print Format"
   },
   {
@@ -273,14 +274,13 @@
   },
   {
    "fieldname": "column_break_trxz",
-   "fieldtype": "Column Break",
-   "mandatory_depends_on": "eval:doc.send_communication"
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-11 11:11:30.338798",
+ "modified": "2025-06-11 13:45:39.801128",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
