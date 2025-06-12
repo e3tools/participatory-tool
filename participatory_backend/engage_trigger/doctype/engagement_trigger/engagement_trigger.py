@@ -108,7 +108,7 @@ class EngagementTrigger(Document):
             if value_to_update not in select_options:
                 frappe.throw(
                     _(
-                        f"Row {idx}. The specified update value cannot be {value_to_update}. It must be one of {select_options}"
+                        f"Row {idx}. The specified update value cannot be {frappe.bold(value_to_update)}. It must be one of {frappe.bold(str(select_options))}"
                     )
                 )
         # validate numerics
@@ -152,7 +152,7 @@ class EngagementTrigger(Document):
             if target_field.get("options") != self.engagement_form:
                 frappe.throw(
                     _(
-                        f"Row {idx}. The ID field cannot update a link field of a type other than {self.engagement_form}."
+                        f"Row {idx}. The ID field cannot update a link field of a type other than {frappe.bold(self.engagement_form)}."
                     )
                 )
             else:  # do not proceed further
@@ -171,7 +171,7 @@ class EngagementTrigger(Document):
             if source_options != target_options:
                 frappe.throw(
                     _(
-                        f"Row {idx}. Both the source and target fields must have the same Form associated. The source is linked to {source_options} while the target is linked to {target_options}"
+                        f"Row {idx}. Both the source and target fields must have the same Form associated. The source is linked to {frappe.bold(source_options)} while the target is linked to {frappe.bold(target_options)}"
                     )
                 )
 
