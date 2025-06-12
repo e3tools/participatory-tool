@@ -15,7 +15,7 @@ class EngagementTriggerUpdateFormFieldItem(Document):
 		from frappe.types import DF
 
 		field_to_update: DF.Literal[None]
-		field_to_update_value: DF.Data
+		field_to_update_value: DF.SmallText
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data

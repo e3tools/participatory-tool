@@ -51,3 +51,11 @@ def strip_special_characters(text: str, strip_numerics=True):
         )  # remove anything that is not text or number
     res = re.sub(r"_+", "_", res)  # replace multiple _ with a single one
     return res.strip()
+
+
+def is_float(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False

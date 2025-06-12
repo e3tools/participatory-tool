@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import cast, validate_email_address
+from frappe.utils import cast, validate_email_address, today, getdate, nowtime, now
 from frappe.email.doctype.notification.notification import get_context
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 import json
@@ -12,6 +12,7 @@ from frappe.desk.doctype.notification_log.notification_log import (
     enqueue_create_notification,
 )
 from frappe.core.doctype.role.role import get_info_based_on_role, get_user_info
+from participatory_backend.utils.common import is_float
 
 
 class EngagementTrigger(Document):
@@ -87,6 +88,207 @@ class EngagementTrigger(Document):
                     "When the Activate Trigger On is Time Lapse, you must specify the condition(s)"
                 )
             )
+        self.validate_update_values()
+
+    def _do_validate_update_value(self, target_form_field, value_to_update, idx):
+        # field = [x for x in target_form_fields if x.fieldname == field_to_update]
+        field_type = target_form_field.get("fieldtype")
+        # validate Data
+        if len(value_to_update) > 140:
+            frappe.throw(
+                _(
+                    f"Row {idx}. The update value cannot be longer than 140 characters long. Please remove any leading or trailing spaces"
+                )
+            )
+        # validate select
+        if field_type == "Select":
+            options = target_form_field.get("options")
+            select_options = [option for option in options.split("\n") if option]
+            # check if value to update is one of the options
+            if value_to_update not in select_options:
+                frappe.throw(
+                    _(
+                        f"Row {idx}. The specified update value cannot be {value_to_update}. It must be one of {select_options}"
+                    )
+                )
+        # validate numerics
+        if field_type in [
+            "Currency",
+            "Int",
+            "Float",
+            "Percent",
+            "Duration",
+        ]:
+            if not is_float(value_to_update):
+                frappe.throw(
+                    _(
+                        f"Row {idx}. The specified update value [{frappe.bold(value_to_update)}] is not a number"
+                    )
+                )
+
+        if field_type in ["Date", "Datetime", "Time"]:
+            if not value_to_update.strip():
+                frappe.throw(_("Row {fld.idx}. Update value cannot be empty"))
+
+        if field_type == "Date":
+            if value_to_update.strip().lower() not in [
+                "today",
+                "now",
+            ]:
+                getdate(
+                    value_to_update
+                )  # this will throw an exception if its not a valid date
+
+    def _do_validate_source_to_target_fields(self, source_field, target_field, idx):
+        # When the source field is specified as ID, check if the target is a Link of type Current Form
+        if source_field == "name":
+            # make an object as the source field will come in as a string
+            source_field = {"fieldtype": "Data", "fieldname": "name"}
+
+        if (
+            source_field.get("fieldname") == "name"
+            and target_field.get("fieldtype") == "Link"
+        ):
+            if target_field.get("options") != self.engagement_form:
+                frappe.throw(
+                    _(
+                        f"Row {idx}. The ID field cannot update a link field of a type other than {self.engagement_form}."
+                    )
+                )
+            else:  # do not proceed further
+                return
+
+        if source_field.get("fieldtype") != target_field.get("fieldtype"):
+            frappe.throw(
+                _(
+                    f"Row {idx}. The field type of the related form and the current form must be the same."
+                )
+            )
+        # if links , ensure the options are the same
+        if source_field.get("fieldtype") == "Link":
+            source_options = source_field.get("options")
+            target_options = target_field.get("options")
+            if source_options != target_options:
+                frappe.throw(
+                    _(
+                        f"Row {idx}. Both the source and target fields must have the same Form associated. The source is linked to {source_options} while the target is linked to {target_options}"
+                    )
+                )
+
+        # if select, ensure both source and target have same choices
+        if source_field.get("fieldtype") == "Select":
+            source_options = [
+                option for option in source_field.get("options").split("\n") if option
+            ]
+            target_options = [
+                option for option in target_field.get("options").split("\n") if option
+            ]
+            if sorted(source_options) != sorted(target_options):
+                frappe.throw(
+                    _(
+                        f"Row {idx}. Both source and target field must have the same Select choices."
+                    )
+                )
+
+    def validate_update_values(self):
+        """
+        Check that the values to use for updating are valid values
+        """
+        if self.outcome_type == "Update Current Record":
+            fields = frappe.get_meta(self.engagement_form).fields
+            for fld in self.set_property_after_trigger_items:
+                field = [x for x in fields if x.fieldname == fld.field_to_update]
+                if field:
+                    self._do_validate_update_value(
+                        field, fld.field_to_update_value, fld.idx
+                    )
+
+                    # field_type = field[0].fieldtype
+                    # # validate Data
+                    # if len(fld.field_to_update_value) > 140:
+                    #     frappe.throw(
+                    #         _(
+                    #             f"Row {fld.idx}. The update value cannot be longer than 140 characters long. Please remove any leading or trailing spaces"
+                    #         )
+                    #     )
+                    # # validate select
+                    # if field_type == "Select":
+                    #     options = field[0].get("options")
+                    #     select_options = [
+                    #         option for option in options.split("\n") if option
+                    #     ]
+                    #     # check if value to update is one of the options
+                    #     if fld.field_to_update_value not in select_options:
+                    #         frappe.throw(
+                    #             _(
+                    #                 f"Row {fld.idx}. The specified update value cannot be {fld.field_to_update_value}. It must be one of {select_options}"
+                    #             )
+                    #         )
+                    # # validate numerics
+                    # if field_type in [
+                    #     "Currency",
+                    #     "Int",
+                    #     "Float",
+                    #     "Percent",
+                    #     "Duration",
+                    # ]:
+                    #     if not is_float(fld.field_to_update_value):
+                    #         frappe.throw(
+                    #             _(
+                    #                 f"Row {fld.idx}. The specified update value [{frappe.bold(fld.field_to_update_value)}] is not a number"
+                    #             )
+                    #         )
+
+                    # if field_type in ["Date", "Datetime", "Time"]:
+                    #     if not fld.field_to_update_value.strip():
+                    #         frappe.throw(
+                    #             _("Row {fld.idx}. Update value cannot be empty")
+                    #         )
+
+                    # if field_type == "Date":
+                    #     if fld.field_to_update_value.strip().lower() not in [
+                    #         "today",
+                    #         "now",
+                    #     ]:
+                    #         getdate(
+                    #             fld.field_to_update_value
+                    #         )  # this will throw an exception if its not a valid date
+
+        if self.outcome_type in [
+            "Create Another Form Record",
+            "Update Another Form Record",
+        ]:
+            source_fields = frappe.get_meta(self.engagement_form).fields
+            target_fields = frappe.get_meta(self.related_form).fields
+            for item in self.related_form_field_items:
+                target_field = [
+                    x for x in target_fields if x.fieldname == item.related_form_field
+                ]
+                if target_field:
+                    target_field = target_field[0]
+                    if item.source == "Specific Value":
+                        # validate absolute values
+                        self._do_validate_update_value(
+                            target_field, item.update_value, item.idx
+                        )
+                    elif item.source == "From Current Form Field":
+                        # validate source and target values
+                        source_field = [
+                            x
+                            for x in source_fields
+                            if x.fieldname == item.current_form_field
+                        ]
+                        if source_field:
+                            source_field = source_field[0]
+                            self._do_validate_source_to_target_fields(
+                                source_field, target_field, item.idx
+                            )
+                        elif (
+                            item.current_form_field == "name"
+                        ):  # name (ID) field will not be part of the meta.fields
+                            self._do_validate_source_to_target_fields(
+                                "name", target_field, item.idx
+                            )
 
     def run_trigger(self, doc: Document):
         def validate_field_exists(doctype: str, fieldname: str):
@@ -122,6 +324,17 @@ class EngagementTrigger(Document):
                 fieldtype = target_doc.meta.get_field(fieldname).fieldtype
                 if fieldtype in frappe.model.numeric_fieldtypes:
                     value = frappe.utils.cint(value)
+
+                # for date, check for Today and Now
+                if fieldtype in ["Date", "Datetime"] and str(value).lower() in [
+                    "today",
+                    "now",
+                ]:
+                    value = now()
+
+                # for time Check for Now
+                if fieldtype in ["Time"] and str(value).lower() == "now":
+                    value = nowtime()
 
                 value = cast(fieldtype, value)
                 target_doc.set(fieldname, value)

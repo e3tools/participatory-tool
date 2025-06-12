@@ -9,6 +9,7 @@
   "related_form_field",
   "source",
   "current_form_field",
+  "column_break_knce",
   "update_value"
  ],
  "fields": [
@@ -38,19 +39,24 @@
   },
   {
    "depends_on": "eval:doc.source=='Specific Value'",
+   "description": "The selected field will be updated with this value. \n<br>\n<ul>\n<li>\nFor <strong>Date</strong> field types, you can enter <strong>Today</strong> to enable updating to the current date when the trigger fires\n</li>\n<li>\nFor <strong>Time</strong> and <strong>DateTime</strong> field types, you can enter <strong>Now</strong> to enable updating with the current timestamp when this trigger fires\n</li>\n<li>\nFor <strong>Select</strong> field types, ensure that the value specified here is a valid choice\n</li>\n</ul>",
    "fieldname": "update_value",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Update Value",
    "mandatory_depends_on": "eval:doc.source=='Specific Value'",
    "read_only_depends_on": "eval:doc.source!='Specific Value'"
+  },
+  {
+   "fieldname": "column_break_knce",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-27 12:58:46.357308",
+ "modified": "2025-06-12 08:00:14.456252",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger Related Form Item",

@@ -11,8 +11,9 @@ let UPDATEABLE_TYPES = [
   "Currency",
   "Float",
   "Date",
-  "DateTime",
+  "Datetime",
   "Select",
+  "Percent",
 ];
 
 frappe.ui.form.on("Engagement Trigger", {
@@ -60,9 +61,18 @@ frappe.ui.form.on("Engagement Trigger", {
         let link_fields = [];
         if (r.message) {
           r.message.forEach((el) => {
-            if (!frappe.model.no_value_type.includes(el.fieldtype)) {
+            if (
+              !frappe.model.no_value_type.includes(el.fieldtype) &&
+              UPDATEABLE_TYPES.includes(el.fieldtype)
+            ) {
               fields.push({
-                label: el.fieldname + " (" + __(el.label) + ")",
+                label:
+                  el.fieldname +
+                  " (" +
+                  __(el.label) +
+                  " - " +
+                  el.fieldtype +
+                  ")",
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -101,8 +111,6 @@ frappe.ui.form.on("Engagement Trigger", {
             frm.doc.name
           );
 
-          console.log("Loading fields....");
-
           frm.trigger("make_recipient_fields");
           make_recipient_fields(frm, fields);
         }
@@ -126,7 +134,13 @@ frappe.ui.form.on("Engagement Trigger", {
           r.message.forEach((el) => {
             if (!frappe.model.no_value_type.includes(el.fieldtype)) {
               fields.push({
-                label: el.fieldname + " (" + __(el.label) + ")",
+                label:
+                  el.fieldname +
+                  " (" +
+                  __(el.label) +
+                  " - " +
+                  el.fieldtype +
+                  ")",
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -267,7 +281,6 @@ function edit_filters_link(frm, child) {
 }
 
 function make_recipient_fields(frm, fields) {
-  console.log("REcipients");
   let receiver_fields = [];
   if (frm.doc.channel === "Email") {
     receiver_fields = $.map(fields, function (d) {

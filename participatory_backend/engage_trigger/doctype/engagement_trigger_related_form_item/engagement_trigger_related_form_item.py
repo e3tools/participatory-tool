@@ -20,6 +20,6 @@ class EngagementTriggerRelatedFormItem(Document):
 		parenttype: DF.Data
 		related_form_field: DF.Literal[None]
 		source: DF.Literal["", "From Current Form Field", "Specific Value"]
-		update_value: DF.Data | None
+		update_value: DF.SmallText | None
 	# end: auto-generated types
 	pass
