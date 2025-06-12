@@ -200,59 +200,8 @@ class EngagementTrigger(Document):
                 field = [x for x in fields if x.fieldname == fld.field_to_update]
                 if field:
                     self._do_validate_update_value(
-                        field, fld.field_to_update_value, fld.idx
+                        field[0], fld.field_to_update_value, fld.idx
                     )
-
-                    # field_type = field[0].fieldtype
-                    # # validate Data
-                    # if len(fld.field_to_update_value) > 140:
-                    #     frappe.throw(
-                    #         _(
-                    #             f"Row {fld.idx}. The update value cannot be longer than 140 characters long. Please remove any leading or trailing spaces"
-                    #         )
-                    #     )
-                    # # validate select
-                    # if field_type == "Select":
-                    #     options = field[0].get("options")
-                    #     select_options = [
-                    #         option for option in options.split("\n") if option
-                    #     ]
-                    #     # check if value to update is one of the options
-                    #     if fld.field_to_update_value not in select_options:
-                    #         frappe.throw(
-                    #             _(
-                    #                 f"Row {fld.idx}. The specified update value cannot be {fld.field_to_update_value}. It must be one of {select_options}"
-                    #             )
-                    #         )
-                    # # validate numerics
-                    # if field_type in [
-                    #     "Currency",
-                    #     "Int",
-                    #     "Float",
-                    #     "Percent",
-                    #     "Duration",
-                    # ]:
-                    #     if not is_float(fld.field_to_update_value):
-                    #         frappe.throw(
-                    #             _(
-                    #                 f"Row {fld.idx}. The specified update value [{frappe.bold(fld.field_to_update_value)}] is not a number"
-                    #             )
-                    #         )
-
-                    # if field_type in ["Date", "Datetime", "Time"]:
-                    #     if not fld.field_to_update_value.strip():
-                    #         frappe.throw(
-                    #             _("Row {fld.idx}. Update value cannot be empty")
-                    #         )
-
-                    # if field_type == "Date":
-                    #     if fld.field_to_update_value.strip().lower() not in [
-                    #         "today",
-                    #         "now",
-                    #     ]:
-                    #         getdate(
-                    #             fld.field_to_update_value
-                    #         )  # this will throw an exception if its not a valid date
 
         if self.outcome_type in [
             "Create Another Form Record",
