@@ -13,6 +13,9 @@ from frappe.desk.doctype.notification_log.notification_log import (
 )
 from frappe.core.doctype.role.role import get_info_based_on_role, get_user_info
 from participatory_backend.utils.common import is_float
+from participatory_backend.engage.doctype.engagement_profile.engagement_profile import (
+    get_user_emails_by_engagement_profile,
+)
 
 
 class EngagementTrigger(Document):
@@ -66,6 +69,7 @@ class EngagementTrigger(Document):
 
     def validate(self):
         # check cyclic dependency
+        self.condition = (self.condition or "").strip()
         if self.outcome_type in [
             "Update Another Form Record",
             "Create Another Form Record",
@@ -88,6 +92,9 @@ class EngagementTrigger(Document):
                     "When the Activate Trigger On is Time Lapse, you must specify the condition(s)"
                 )
             )
+        for recipient in self.recipients or []:
+            recipient.condition = (recipient.condition or "").strip()
+
         self.validate_update_values()
 
     def _do_validate_update_value(self, target_form_field, value_to_update, idx):
@@ -415,7 +422,7 @@ class EngagementTrigger(Document):
             if self.channel == "System Notification" or self.send_system_notification:
                 self.create_system_notification(doc, context)
 
-        except Exception:
+        except Exception as e:
             self.log_error("Failed to send Notification")
 
     def send_an_email(self, doc, context):
@@ -437,7 +444,6 @@ class EngagementTrigger(Document):
         if self.sender and self.sender_email:
             sender = formataddr((self.sender, self.sender_email))
 
-        # recipients = [x for x in recipients if x == "stevenyaga@gmail.com"]
         communication = None
         # Add mail notification to communication list
         # No need to add if it is already a communication.
@@ -564,6 +570,15 @@ class EngagementTrigger(Document):
             if recipient.receiver_by_role:
                 emails = get_info_based_on_role(
                     recipient.receiver_by_role, "email", ignore_permissions=True
+                )
+
+                for email in emails:
+                    recipients = recipients + email.split("\n")
+
+            # For sending emails to specified engagement profile
+            if recipient.receiver_by_engagement_profile:
+                emails = get_user_emails_by_engagement_profile(
+                    recipient.receiver_by_engagement_profile, ignore_permissions=True
                 )
 
                 for email in emails:

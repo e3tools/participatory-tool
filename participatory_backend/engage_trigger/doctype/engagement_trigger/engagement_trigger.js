@@ -111,8 +111,8 @@ frappe.ui.form.on("Engagement Trigger", {
             frm.doc.name
           );
 
-          frm.trigger("make_recipient_fields");
-          make_recipient_fields(frm, fields);
+          // frm.trigger("make_recipient_fields");
+          make_recipient_fields(frm, r.message); // fields);
         }
       },
     });
@@ -168,6 +168,21 @@ frappe.ui.form.on("Engagement Trigger", {
     }
     edit_filters(frm, doc.engagement_form, doc.condition || "{}", (filters) => {
       frappe.model.set_value(doc.doctype, doc.name, "condition", filters);
+    });
+  },
+  channel: function (frm) {
+    frappe.call({
+      method:
+        "participatory_backend.engage.doctype.engagement_form.engagement_form.get_docfields",
+      args: {
+        doctype: frm.doc.engagement_form,
+      },
+      freeze: true,
+      callback: function (r) {
+        if (r.message) {
+          make_recipient_fields(frm, r.message); // fields);
+        }
+      },
     });
   },
 });
@@ -280,9 +295,23 @@ function edit_filters_link(frm, child) {
   });
 }
 
+function get_select_options(df, parent_field) {
+  // Append parent_field name along with fieldname for child table fields
+  let select_value = parent_field
+    ? df.fieldname + "," + parent_field
+    : df.fieldname;
+
+  return {
+    value: select_value,
+    label: df.fieldname + " (" + __(df.label, null, df.parent) + ")",
+  };
+}
+
 function make_recipient_fields(frm, fields) {
+  debugger;
   let receiver_fields = [];
   if (frm.doc.channel === "Email") {
+    debugger;
     receiver_fields = $.map(fields, function (d) {
       // Add User and Email fields from child into select dropdown
       if (frappe.model.table_fields.includes(d.fieldtype)) {
@@ -311,7 +340,8 @@ function make_recipient_fields(frm, fields) {
   frm.fields_dict.recipients.grid.update_docfield_property(
     "receiver_by_document_field",
     "options",
-    [""].concat(["owner"]).concat(receiver_fields)
+    // [""].concat(["owner"]).concat(receiver_fields)
+    [""].concat(receiver_fields)
   );
 }
 
