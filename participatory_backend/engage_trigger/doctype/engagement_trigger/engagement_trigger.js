@@ -308,10 +308,8 @@ function get_select_options(df, parent_field) {
 }
 
 function make_recipient_fields(frm, fields) {
-  debugger;
   let receiver_fields = [];
   if (frm.doc.channel === "Email") {
-    debugger;
     receiver_fields = $.map(fields, function (d) {
       // Add User and Email fields from child into select dropdown
       if (frappe.model.table_fields.includes(d.fieldtype)) {
@@ -369,7 +367,6 @@ function format_filter_for_python(filter) {
 //                 category: frm.doc.engagement_form // Assuming the category is in a field on the parent table
 //             },
 //             success: function(result) {
-//                 debugger;
 //                 // Populate the Select field with the received options
 //                 cur_frm.set_df_property('field_to_update', 'options', result.message);
 //                 cur_frm.refresh_field('field_to_update'); // Refresh to update the UI
