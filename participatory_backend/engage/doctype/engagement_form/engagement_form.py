@@ -92,6 +92,7 @@ class EngagementForm(Document):
             EngagementFormPermission,
         )
 
+        allow_incomplete_form: DF.Check
         anonymous: DF.Check
         description: DF.TextEditor | None
         enable_web_form: DF.Check
@@ -130,6 +131,11 @@ class EngagementForm(Document):
         return self.get_route(fqdn=True)
 
     def validate(self):
+        # from participatory_backend.patches.v1.initialize_self_registration_form import (
+        #     execute,
+        # )
+
+        # execute()
         # from participatory_backend.tasks import unpublish_webforms
         # unpublish_webforms()
         if self.is_new() or not self.form_key:
@@ -291,11 +297,11 @@ class EngagementForm(Document):
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
             if not fld.field_name:  # when field has not been set
-                fld.field_name = scrub(fld.field_label)
+                fld.field_name = scrub(fld.field_label, False).strip()
             elif hasattr(fld, "__islocal") and fld.get(
                 "__islocal"
             ):  # if its a new field, then replace special characters. do not modify names for existing fields as it may lead to data loss
-                fld.field_name = strip_special_characters(fld.field_name, True)
+                fld.field_name = strip_special_characters(fld.field_name, False)
             fld.field_name = fld.field_name.lower()
             if fld.field_type in ["Link", "Table MultiSelect"]:
                 # Table MultiSelect are associated with Non-Table DocTypes. The system will handle creation of corresponding child tables
@@ -452,12 +458,17 @@ class EngagementForm(Document):
         # 	doc.naming_rule = ""
         # 	doc.autoname = ""
         # 	self.naming_format = ""
-        doc.naming_rule = "Expression (old style)"
-        doc.autoname = self._get_naming_rule()
+
         doc.allow_rename = 0
         if cint(self.use_field_to_generate_id):
             doc.naming_rule = "By fieldname"
             doc.allow_rename = 1
+
+        if cint(self.field_is_table):
+            doc.naming_rule = None
+            doc.autoname = None
+            doc.allow_rename = 0
+
         doc.track_changes = 1
         doc.allow_import = 1
         doc.hide_toolbar = 0
@@ -1817,7 +1828,9 @@ class EngagementForm(Document):
             "web_form_fields": [],
             "button_label": "Submit",
             "route": self.get_route(),
-            "allow_incomplete": 1,
+            "allow_incomplete": self.allow_incomplete_form
+            or len(backend_only_fields)
+            > 0,  # only allow incomplete if there are backend only fields or if expressly set,
             # "allow_incomplete": (
             #     True if backend_only_fields else False
             # ),  # only allow incomplete if there are backend only fields
@@ -2042,12 +2055,21 @@ def doctype_to_engagement_form(doctype: str = "Sample Test Form"):
     """
     Make an Engagement Form based on a DocType
     """
-    doc = frappe.get_doc("DocType", doctype)
-    form = frappe.new_doc("Engagement Form")
+    from frappe.core.doctype.doctype.doctype import DocType
+
+    doc: DocType = frappe.get_doc("DocType", doctype)
+    form: EngagementForm = frappe.new_doc("Engagement Form")
+    form.form_name = doctype
+    form.field_is_table = doc.istable
     for field in doc.fields:
         r = field.as_dict()
         r["doctype"] = "Engagement Form Field"
-        form.append("fields", r)
+        form.append("form_fields", r)
+
+    for perm in doc.permissions:
+        r = perm.as_dict()
+        r["doctype"] = "Engagement Form Permission"
+        form.append("form_permissions", r)
 
     form.save(ignore_permissions=True)
 

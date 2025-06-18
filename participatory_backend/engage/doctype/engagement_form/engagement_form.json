@@ -42,6 +42,7 @@
   "publish_end_date",
   "column_break_mgpp",
   "anonymous",
+  "allow_incomplete_form",
   "success_message",
   "form_image_base_64",
   "qr_code_tab",
@@ -103,13 +104,14 @@
    "label": "Is Child Table"
   },
   {
-   "depends_on": "eval: !doc.use_field_to_generate_id",
+   "depends_on": "eval: !doc.use_field_to_generate_id && !doc.field_is_table",
    "description": "Records created will be prefixed by this value",
    "fieldname": "record_id_prefix",
    "fieldtype": "Data",
    "label": "Record ID Prefix"
   },
   {
+   "depends_on": "eval:!doc.field_is_table",
    "fieldname": "naming_format",
    "fieldtype": "Data",
    "label": "Naming Format",
@@ -165,7 +167,7 @@
    "description": "If checked, users who have not logged in will be able to enter data into the form",
    "fieldname": "anonymous",
    "fieldtype": "Check",
-   "label": "Receive anonymous response"
+   "label": "Require users to login"
   },
   {
    "fieldname": "settings_tab",
@@ -240,12 +242,13 @@
   },
   {
    "default": "0",
+   "depends_on": "eval:!doc.field_is_table",
    "fieldname": "use_field_to_generate_id",
    "fieldtype": "Check",
    "label": "Use a Form Field To Generate ID"
   },
   {
-   "depends_on": "eval: doc.use_field_to_generate_id",
+   "depends_on": "eval: doc.use_field_to_generate_id && !doc.field_is_table",
    "description": "Set this as the value in the Field Name column",
    "fieldname": "naming_field",
    "fieldtype": "Data",
@@ -297,6 +300,13 @@
    "fieldname": "publish_end_date",
    "fieldtype": "Date",
    "label": "End Date"
+  },
+  {
+   "default": "1",
+   "description": "If checked, users will be allowed to submit incomplete data",
+   "fieldname": "allow_incomplete_form",
+   "fieldtype": "Check",
+   "label": "Allow submitting incomplete data"
   }
  ],
  "grid_page_length": 50,
@@ -304,7 +314,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-09 18:21:01.577010",
+ "modified": "2025-06-18 19:15:25.025946",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

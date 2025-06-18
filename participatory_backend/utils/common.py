@@ -31,18 +31,19 @@ def get_initials(text: str):
     return res
 
 
-def scrub(text: str):
+def scrub(text: str, strip_numerics=False):
     """
     Replace special characters then call frappe.scrub
     """
     if not text:
         return ""
     # txt = '_'.join(re.findall(r'\b\w+\b', text))
-    txt = strip_special_characters(text).strip()
+    txt = strip_special_characters(text, strip_numerics).strip()
     return frappe.scrub(txt)
 
 
 def strip_special_characters(text: str, strip_numerics=True):
+    text = text.strip() if text else ""  # strip out the space first
     if strip_numerics:
         res = re.sub(r"[^a-zA-Z]", "_", text)  # remove anything that is not text
     else:
@@ -50,7 +51,7 @@ def strip_special_characters(text: str, strip_numerics=True):
             r"[^a-zA-Z0-9]", "_", text
         )  # remove anything that is not text or number
     res = re.sub(r"_+", "_", res)  # replace multiple _ with a single one
-    return res.strip()
+    return res.strip().strip("_")  # strip leading and trailing underscores
 
 
 def is_float(value):

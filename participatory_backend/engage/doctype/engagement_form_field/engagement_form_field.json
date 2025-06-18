@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-09-17 19:15:34.829186",
+ "creation": "2025-03-17 08:09:04.864027",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -112,7 +112,7 @@
    "depends_on": "eval:in_list(['Link', 'Table MultiSelect'], doc.field_type)",
    "fieldname": "field_doctype",
    "fieldtype": "Link",
-   "label": "Form",
+   "label": "Form/Reusable List",
    "mandatory_depends_on": "eval:in_list(['Link', 'Table MultiSelect'], doc.field_type)",
    "options": "DocType"
   },
@@ -309,15 +309,17 @@
    "label": "Additional Linked Table Fields"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-17 05:18:43.310020",
+ "modified": "2025-06-17 23:58:35.807860",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

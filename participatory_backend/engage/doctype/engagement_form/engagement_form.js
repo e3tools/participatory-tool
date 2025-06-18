@@ -124,14 +124,14 @@ frappe.ui.form.on("Engagement Form", {
     if (!frm.is_new() && !frm.doc.field_is_table) {
       if (frm.doc.enable_web_form) {
         frm.add_custom_button(
-          __("See on website", [__(frm.doc.name)]),
+          __("Public View", [__(frm.doc.name)]),
           () => {
             window.open(`/${frappe.router.slug(frm.doc.route)}/new`);
           },
           __("Actions")
         );
       } else {
-        frm.remove_custom_button(__("See on website"), __("Actions"));
+        frm.remove_custom_button(__("Public View"), __("Actions"));
       }
 
       frm.add_custom_button(
