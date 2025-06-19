@@ -167,7 +167,7 @@
    "description": "If checked, users who have not logged in will be able to enter data into the form",
    "fieldname": "anonymous",
    "fieldtype": "Check",
-   "label": "Require users to login"
+   "label": "Allow users who are not logged in to submit data"
   },
   {
    "fieldname": "settings_tab",
@@ -314,7 +314,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-18 19:15:25.025946",
+ "modified": "2025-06-19 13:33:19.064086",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
