@@ -708,6 +708,10 @@ for item in doc.{field.field_name}:
         if cint(self.field_is_table):
             return  # if child table, no permissions as the child table will inherit parent form's permissions
 
+        # if there is All or Guest role, set user to administrator so that one is allowed to set these roles
+        if [x for x in self.form_permissions if x.role in ["All", "Guest"]]:
+            frappe.set_user("Administrator")
+
         for perm in self.form_permissions:
             r = frappe._dict()
             r["role"] = perm.role
