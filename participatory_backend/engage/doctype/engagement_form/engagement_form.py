@@ -463,6 +463,7 @@ class EngagementForm(Document):
         if cint(self.use_field_to_generate_id):
             doc.naming_rule = "By fieldname"
             doc.allow_rename = 1
+            doc.autoname = self._get_naming_rule()
 
         if cint(self.field_is_table):
             doc.naming_rule = None
