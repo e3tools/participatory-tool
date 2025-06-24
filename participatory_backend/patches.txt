@@ -2,3 +2,4 @@
 
 [post_model_sync]
 participatory_backend.patches.v1.update_depends_on
+participatory_backend.patches.v1.initialize_self_registration_form

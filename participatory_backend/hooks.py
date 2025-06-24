@@ -122,7 +122,7 @@ doc_events = {
 
 scheduler_events = {
     "all": [
-        # "participatory_backend.tasks.unpublish_webforms",
+        "participatory_backend.tasks.unpublish_webforms",
     ],
     "cron": {
         "0/1 * * * *": [  # run every 1 minute.
