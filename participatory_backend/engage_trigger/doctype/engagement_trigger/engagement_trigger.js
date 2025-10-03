@@ -14,6 +14,7 @@ let UPDATEABLE_TYPES = [
   "Datetime",
   "Select",
   "Percent",
+  "Link",
 ];
 
 frappe.ui.form.on("Engagement Trigger", {
