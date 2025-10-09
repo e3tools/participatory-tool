@@ -2012,7 +2012,7 @@ def convert_depends_on_conditions_to_js_format(
             + ")"
         )
         if i != len(conditions) - 1:
-            exp += " && "
+            res += " && "
 
     return res
 
