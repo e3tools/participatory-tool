@@ -41,6 +41,7 @@ ALLOWED_FORMULA_FIELD_TYPES = [
     "Datetime",
     "Int",
     "Float",
+    "Small Text",
     "Text",
     "Time",
 ]
@@ -294,6 +295,27 @@ class EngagementForm(Document):
 
     def validate_fields(self):
         for fld in self.form_fields:
+            if fld.field_type in ["Column Break", "Section Break"]:
+                fld.field_reqd = False
+                fld.field_readonly = False
+                fld.field_hidden = False
+                fld.field_is_backend_field = False
+                fld.field_default = ""
+                fld.field_in_list_view = False
+                fld.field_is_search_field = False
+                fld.mandatory_depends_on_plain = ""
+                fld.mandatory_depends_on = ""
+                fld.read_only_depends_on_plain = ""
+                fld.read_only_depends_on = ""
+                fld.description = ""
+                fld.max_height = ""
+
+            if fld.field_type != "Duration":
+                fld.hide_days = False
+                fld.hide_seconds = False
+            else:
+                fld.hide_days = fld.hide_days
+                fld.hide_seconds = fld.hide_seconds
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
             if not fld.field_name:  # when field has not been set
@@ -499,11 +521,12 @@ class EngagementForm(Document):
                 }
             ).insert(ignore_permissions=True)
 
-        def _create_child_table_script(field, script):
+        def _create_child_table_script(field_name, field_label, script):
             doc = frappe.get_doc(
                 {
                     "doctype": "Server Script",
-                    "__newname": f"{self.form_name} - {field.field_label} - {field.field_name}",
+                    # "__newname": f"{self.form_name} - {field_label} - {field_name}",
+                    "__newname": f"{self.form_name}",
                     "script_type": "DocType Event",
                     "reference_doctype": self.form_name,
                     "doctype_event": "Before Save",
@@ -514,37 +537,82 @@ class EngagementForm(Document):
 
         # delete scripts in case they exist
         frappe.db.delete("Server Script", {"reference_doctype": self.form_name})
-        # make Server Script
+        # make Server Script for formula fields
+
+        script = ""
         formula_fields = [
             x
             for x in self.form_fields
             if x.formula and x.field_type in ALLOWED_FORMULA_FIELD_TYPES
         ]
         for field in formula_fields:
-            _create_script(field)
+            # _create_script(field)
+            script += f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}"
+
+        # make server scripts for mandatory checkbox since frappe does not enforce mandatory for checkbox out of the box
+        checkboxes = [
+            x for x in self.form_fields if x.field_type == "Check" and x.field_reqd
+        ]
+        if checkboxes:
+            for chk in checkboxes:
+                script += f"""
+if not (doc.{chk.field_name}):
+    frappe.throw(_("{chk.field_label} must be checked"))
+                       """
+            # frappe.get_doc(
+            #     {
+            #         "doctype": "Server Script",
+            #         "__newname": f"{self.form_name} - mandatory checkboxes",
+            #         "script_type": "DocType Event",
+            #         "reference_doctype": self.form_name,
+            #         "doctype_event": "Before Save",
+            #         "module": MODULE_NAME,
+            #         "script": script,
+            #     }
+            # ).insert(ignore_permissions=True)
 
         # check if child table has formula
         # Server script formulas execute code not frappe events. so write the raw code not inside a function and
         # remember the code must have doc as the prefix if you are referring to a field in the document
         fields = [x for x in self.form_fields if x.field_type == "Table"]
         for field in fields:
-            script = ""
             table_fields = frappe.db.get_all(
                 "Engagement Form Field",
                 filters={"parent": field.field_child_doctype},
-                fields=["field_label", "field_name", "formula"],
+                fields=[
+                    "field_label",
+                    "field_name",
+                    "formula",
+                    "field_type",
+                    "field_reqd",
+                ],
             )
             formula_fields = [x for x in table_fields if x.formula]
             if formula_fields:
-                script = f"""
-for item in doc.{field.field_name}:
-                         """
+                script += f"""
+for item in doc.{field.field_name}:"""
                 for fld in formula_fields:
                     # replace doc. with item. in the formulas
                     script += f"""								
-    item.{fld.field_name} = {fld.formula.replace("doc.", "item.")}
+    item.{fld.field_name} = {fld.formula.replace("doc.", "item.")} 
                             """
-                _create_child_table_script(field, script)
+                # _create_child_table_script(field.field_name, field.field_label, script)
+
+            # create server script for child table where checkboxes is mandatory
+            checkboxes = [
+                x for x in table_fields if x.field_type == "Check" and x.field_reqd
+            ]
+            if checkboxes:
+                for chk in checkboxes:
+                    script += f"""
+for i, itm in enumerate(doc.{field.field_name}):
+    if not (itm.{chk.field_name}):
+        frappe.throw(_(f"Row {{i+1}}. {chk.field_label} must be checked"))
+    """
+                # _create_child_table_script(chk.field_name, chk.field_label, script)
+
+        if script:
+            _create_child_table_script(None, None, script)
 
     def sanitize_filters(self, filters):
         """
@@ -874,6 +942,8 @@ for item in doc.{field.field_name}:
             "description": form_field.description,
             "max_height": form_field.max_height,
             "hidden": form_field.field_hidden,
+            "hide_days": form_field.hide_days,
+            "hide_seconds": form_field.hide_seconds,
         }
         return field
 
@@ -1505,6 +1575,38 @@ for item in doc.{field.field_name}:
                     }
                     """
 
+            def _make_mandatory_checkboxes():
+                script = """
+                        frappe.web_form.validate = () => {
+                            // Get values from the web form fields
+                            let data = frappe.web_form.get_values();
+                        """
+
+                checkboxes = [
+                    x
+                    for x in self.form_fields
+                    if x.field_type == "Check" and x.field_reqd
+                ]
+
+                for chk in checkboxes:
+                    script += """
+                                if (!data.%s) {
+                                    frappe.msgprint('%s must be checked');
+                                    return false; // Return false to prevent saving the form
+                                }
+                            """ % (
+                        chk.field_name,
+                        chk.field_label,
+                    )
+
+                script += """    
+                        // If all validations pass, return true to allow saving
+                        return true;
+                    };
+                   """
+
+                return script
+
             def _make_readonly_trigger(source_field: str):
                 """
                 Check if there are other fields that should reset their values when the value of this field changes
@@ -1714,7 +1816,7 @@ for item in doc.{field.field_name}:
 
                 return field_scripts
 
-            return _make_filter_functions()
+            return _make_filter_functions() + _make_mandatory_checkboxes()
 
         def _make_target_field_function(
             engagement_form_field: EngagementFormField,
@@ -1967,6 +2069,7 @@ for item in doc.{field.field_name}:
                     "field_label": "Grant consent for data processing?",
                     "field_type": "Check",
                     "field_name": "grant_data_processing_consent",
+                    "field_reqd": 1,
                 },
             )
 
