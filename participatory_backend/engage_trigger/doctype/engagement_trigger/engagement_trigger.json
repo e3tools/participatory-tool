@@ -183,7 +183,7 @@
    "fieldname": "channel",
    "fieldtype": "Select",
    "label": "Channel",
-   "options": "Email\nSMS"
+   "options": "\nEmail\nSMS"
   },
   {
    "depends_on": "eval: in_list(['Email', 'Slack', 'System Notification'], doc.channel)",
@@ -191,7 +191,7 @@
    "fieldname": "subject",
    "fieldtype": "Data",
    "label": "Subject",
-   "mandatory_depends_on": "eval: in_list(['Email', 'Slack', 'System Notification'], doc.channel)"
+   "mandatory_depends_on": "eval: doc.send_communication && in_list(['Email', 'Slack', 'System Notification'], doc.channel)"
   },
   {
    "fieldname": "column_break_rsoy",
@@ -297,7 +297,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-16 21:43:17.598665",
+ "modified": "2025-10-11 12:34:59.890187",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
