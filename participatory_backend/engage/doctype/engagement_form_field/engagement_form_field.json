@@ -8,6 +8,8 @@
   "field_label",
   "field_type",
   "field_name",
+  "hide_days",
+  "hide_seconds",
   "field_choices",
   "linked_form",
   "linked_form_property",
@@ -58,7 +60,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Field Type",
-   "options": "\nAttach\nAttach Image\nCheck\nColumn Break\nCurrency\nData\nDate\nDatetime\nHTML\nInt\nFloat\nGeolocation\nLink\nLinked Field\nSelect\nSelect Multiple\nSection Break\nText\nText Editor\nTab Break\nTable\nTable MultiSelect\nTime",
+   "options": "\nAttach\nAttach Image\nCheck\nColumn Break\nCurrency\nData\nDate\nDatetime\nDuration\nHTML\nInt\nFloat\nGeolocation\nLink\nLinked Field\nPassword\nRating\nSelect\nSelect Multiple\nSection Break\nSignature\nSmall Text\nText\nText Editor\nTab Break\nTable\nTable MultiSelect\nTime",
    "reqd": 1
   },
   {
@@ -307,13 +309,27 @@
    "fieldname": "additional_linked_table_fields",
    "fieldtype": "JSON",
    "label": "Additional Linked Table Fields"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.field_type==\"Duration\"",
+   "fieldname": "hide_days",
+   "fieldtype": "Check",
+   "label": "Hide Days"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.field_type==\"Duration\"",
+   "fieldname": "hide_seconds",
+   "fieldtype": "Check",
+   "label": "Hide Seconds"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-17 23:58:35.807860",
+ "modified": "2025-10-11 14:00:40.500746",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",
