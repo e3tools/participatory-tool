@@ -225,6 +225,7 @@ frappe.ui.form.on("Engagement Form Field", {
       );
       frm.trigger("linked_form", cdt, cdn);
     }
+    frm.trigger("layout_fields", cdt, cdn);
   },
   linked_form: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -268,6 +269,44 @@ frappe.ui.form.on("Engagement Form Field", {
       child.linked_form_property
     );
     frm.trigger("set_linked_field_value", cdt, cdn);
+  },
+  layout_fields: function (frm, cdt, cdn) {
+    const props = [
+      ["field_reqd", false],
+      ["field_readonly", false],
+      ["field_hidden", false],
+      ["field_is_backend_field", false],
+      ["field_default", ""],
+      ["field_in_list_view", false],
+      ["field_is_search_field", false],
+      ["set_mandatory_depends_on", null],
+      ["mandatory_depends_on_plain", ""], //set to null to avoid overriding incase user selected another field type
+      ["mandatory_depends_on", ""], //set to null to avoid overriding incase user selected another field type
+      ["set_read_only_depends_on", null], //set to null to avoid overriding incase user selected another field type
+      ["read_only_depends_on_plain", null], //set to null to avoid overriding incase user selected another field type
+      ["read_only_depends_on", ""],
+      ["description", ""],
+      ["max_height", ""],
+    ];
+    var child = locals[cdt][cdn];
+    var is_layout_field = in_list(
+      ["Section Break", "Column Break"],
+      child.field_type
+    );
+    props.forEach((el) => {
+      frm.set_df_property(
+        "form_fields",
+        "hidden",
+        is_layout_field,
+        frm.doc.name,
+        el[0],
+        cdn
+      );
+
+      // if (el[1] !== null) {
+      //   frappe.model.set_value(cdt, cdn, el[0], el[1]);
+      // }
+    });
   },
   set_linked_field_value: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
