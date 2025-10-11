@@ -35,12 +35,12 @@ frappe.ui.form.on("Engagement Form", {
   refresh(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
       // force all forms to have web-form enabled
-      frappe.model.set_value(
-        frm.doc.doctype,
-        frm.doc.name,
-        "enable_web_form",
-        1
-      );
+      // frappe.model.set_value(
+      //   frm.doc.doctype,
+      //   frm.doc.name,
+      //   "enable_web_form",
+      //   1
+      // );
       if (frm.doc.issingle) {
         frm.add_custom_button(__("Go to {0}", [__(frm.doc.name)]), () => {
           window.open(`/app/${frappe.router.slug(frm.doc.name)}`);
@@ -49,15 +49,15 @@ frappe.ui.form.on("Engagement Form", {
         // frm.add_custom_button(__("Go to {0} List", [__(frm.doc.name)]), () => {
         // 	window.open(`/app/${frappe.router.slug(frm.doc.name)}`);
         // });
-
-        frm.add_custom_button(
-          __("New", [__(frm.doc.name)]),
-          () => {
-            window.open(`/app/${frappe.router.slug(frm.doc.name)}/new`);
-          },
-          __("View")
-        );
-
+        if (!frm.doc.user_cannot_create) {
+          frm.add_custom_button(
+            __("New", [__(frm.doc.name)]),
+            () => {
+              window.open(`/app/${frappe.router.slug(frm.doc.name)}/new`);
+            },
+            __("View")
+          );
+        }
         frm.add_custom_button(
           __("List", [__(frm.doc.name)]),
           () => {
@@ -122,7 +122,7 @@ frappe.ui.form.on("Engagement Form", {
   },
   enable_web_form(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
-      if (frm.doc.enable_web_form) {
+      if (frm.doc.enable_web_form && !frm.doc.user_cannot_create) {
         frm.add_custom_button(
           __("Public View", [__(frm.doc.name)]),
           () => {
@@ -134,13 +134,15 @@ frappe.ui.form.on("Engagement Form", {
         frm.remove_custom_button(__("Public View"), __("Actions"));
       }
 
-      frm.add_custom_button(
-        __("Create engagement", [__(frm.doc.name)]),
-        () => {
-          frm.events.make_engagement(frm);
-        },
-        __("Actions")
-      );
+      if (!frm.doc.user_cannot_create) {
+        frm.add_custom_button(
+          __("Create engagement", [__(frm.doc.name)]),
+          () => {
+            frm.events.make_engagement(frm);
+          },
+          __("Actions")
+        );
+      }
     }
   },
   set_public_url(frm) {

@@ -27,6 +27,7 @@ from participatory_backend.engage.doctype.engagement_form_field.engagement_form_
 from frappe.model.naming import make_autoname
 import random
 import string
+from frappe.core.doctype.doctype.doctype import DocType
 
 SELECT_MULTIPLE = 1
 TABLE_MULTISELECT = 2
@@ -86,12 +87,8 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
-            EngagementFormField,
-        )
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
-            EngagementFormPermission,
-        )
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -122,6 +119,7 @@ class EngagementForm(Document):
         success_message: DF.SmallText | None
         title_field: DF.Literal[None]
         use_field_to_generate_id: DF.Check
+        user_cannot_create: DF.Check
         web_title: DF.Data | None
     # end: auto-generated types
 
@@ -167,6 +165,8 @@ class EngagementForm(Document):
         self.public_url = self.get_route(fqdn=True)
         self.create_data_protection_fields()
         self.make_doctype()
+        if self.user_cannot_create:
+            self.enable_web_form = False
         if self.field_is_table:
             self.enable_web_form = False
         self.generate_image_fields()
@@ -454,10 +454,10 @@ class EngagementForm(Document):
                     fields[-1]["read_only"] = True
 
         if self.is_new():
-            doc = frappe.new_doc("DocType")
+            doc: DocType = frappe.new_doc("DocType")
             doc.name = self.name
         else:
-            doc = frappe.get_doc("DocType", self.name)
+            doc: DocType = frappe.get_doc("DocType", self.name)
 
         doc.fields = []
         for field in fields:
@@ -497,6 +497,7 @@ class EngagementForm(Document):
         doc.hide_toolbar = 0
         doc.make_attachments_public = self.make_attachments_public
         doc.istable = self.field_is_table
+        doc.in_create = self.user_cannot_create
         self._set_roles(doc)
         self._set_states(doc)
         doc.save(ignore_permissions=True)
