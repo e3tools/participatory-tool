@@ -458,9 +458,16 @@ def get_engagement_doctypes():
     doctypes = {}
     for engagement in active_engagements:
         if engagement.engagement_form:
-            doctypes[engagement.engagement_form] = frappe.get_meta(
-                engagement.engagement_form
-            )
+            doctypes[engagement.engagement_form] = {"meta": {}, "tables": {}}
+            meta = frappe.get_meta(engagement.engagement_form)
+            tables = {}
+            # if there are table fields, get the respective meta
+            for field in meta.get_table_fields():
+                child_meta = frappe.get_meta(field.options)
+                tables[field.options] = child_meta
+
+            doctypes[engagement.engagement_form]["meta"] = meta
+            doctypes[engagement.engagement_form]["tables"] = tables
     # get the linked fields for the engagement form
     return doctypes
 
