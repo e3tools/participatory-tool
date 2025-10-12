@@ -258,7 +258,7 @@
    "depends_on": "eval: doc.use_field_to_generate_id && !doc.field_is_table",
    "description": "Set this as the value in the Field Name column",
    "fieldname": "naming_field",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Field To Use As ID",
    "mandatory_depends_on": "eval: doc.use_field_to_generate_id"
   },
@@ -351,7 +351,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-11 18:02:44.813912",
+ "modified": "2025-10-11 19:12:16.566316",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

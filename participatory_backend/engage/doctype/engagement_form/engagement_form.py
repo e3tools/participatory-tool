@@ -87,8 +87,12 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
+            EngagementFormField,
+        )
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
+            EngagementFormPermission,
+        )
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -105,7 +109,7 @@ class EngagementForm(Document):
         form_permissions: DF.Table[EngagementFormPermission]
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
-        naming_field: DF.Data | None
+        naming_field: DF.Literal[None]
         naming_format: DF.Data | None
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
@@ -157,6 +161,7 @@ class EngagementForm(Document):
         self.web_title = self.web_title or ""
         if not self.web_title:
             self.web_title = self.form_name
+        self.validate_naming_field()
         self.validate_prefix()
         self.validate_fields()
         self.route = (
@@ -171,6 +176,21 @@ class EngagementForm(Document):
             self.enable_web_form = False
         self.generate_image_fields()
         self.publish_form()
+
+    def validate_naming_field(self):
+        """
+        Validate that the field used as naming field is mandatory
+        """
+        if self.use_field_to_generate_id:
+            # on the frontend, we are only setting labels since we may not have the field_names generated on the frontend yet
+            fld = [x for x in self.form_fields if x.field_label == self.naming_field]
+            if not fld[0].field_reqd:
+                frappe.throw(
+                    _(
+                        f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
+                    )
+                )
+            self.naming_field = fld[0].field_name
 
     def validate_prefix(self):
         has_special_xters = re.findall(
@@ -486,6 +506,8 @@ class EngagementForm(Document):
             doc.naming_rule = "By fieldname"
             doc.allow_rename = 1
             doc.autoname = self._get_naming_rule()
+
+        doc.autoname = self._get_naming_rule()
 
         if cint(self.field_is_table):
             doc.naming_rule = None

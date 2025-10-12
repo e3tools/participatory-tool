@@ -118,6 +118,7 @@ frappe.ui.form.on("Engagement Form", {
   },
   onload_post_render(frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
     frm.events.show_qrcode(frm);
   },
   enable_web_form(frm) {
@@ -153,9 +154,11 @@ frappe.ui.form.on("Engagement Form", {
   validate: function (frm) {},
   form_fields_add: function (frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
   },
   form_fields_remove: function (frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
   },
   // show_title_field_in_link(frm) {
   // 	set_title_field_options(frm);
@@ -540,6 +543,31 @@ const set_title_field_options = function (frm) {
     frm.doc.doctype,
     frm.doc.name,
     "title_field",
+    label_val
+  );
+};
+
+const set_name_field_options = function (frm) {
+  const val = frm.doc.naming_field;
+  let label_val = "";
+  const fields = [];
+  frm.doc.form_fields?.forEach((field) => {
+    if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
+      fields.push({
+        label: field.field_label,
+        value: field.field_label,
+        selected: field.field_name === val,
+      });
+    }
+    if (field.field_name === val) {
+      label_val = field.field_label;
+    }
+  });
+  frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+  frappe.model.set_value(
+    frm.doc.doctype,
+    frm.doc.name,
+    "naming_field",
     label_val
   );
 };
