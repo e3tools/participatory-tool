@@ -149,19 +149,19 @@
   },
   {
    "fieldname": "depends_on",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Conditions To Display This Field",
    "read_only": 1
   },
   {
    "fieldname": "mandatory_depends_on",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Conditions To Make This Field Mandatory",
    "read_only": 1
   },
   {
    "fieldname": "read_only_depends_on",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Conditions To Make This Field Read Only",
    "read_only": 1
   },
@@ -169,7 +169,7 @@
    "depends_on": "eval:in_list([\"Currency\", \"Data\",\"Date\",\"Datetime\",\"Int\",\"Float\",\"Text\",\"Time\"], doc.field_type)",
    "description": "Formula that will be used to generate value for this field. An example is <br> 1. <i><b>doc.qty * doc.rate; \n<br>\n2. doc.first_name + \" \" + doc.last_name\n</b>\n\n</i>",
    "fieldname": "formula",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "<b>Formula</b>"
   },
   {
@@ -262,14 +262,14 @@
   {
    "description": "The field will be <b>displayed</b> when this condition is met.",
    "fieldname": "depends_on_plain",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "<font color=\"secondary\">Conditions To Display This Field</font>",
    "read_only": 1
   },
   {
    "description": "The field will be <b>mandatory</b> when this condition is met.",
    "fieldname": "mandatory_depends_on_plain",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "<font color=\"secondary\">Conditions To Make This Field Mandatory</font>",
    "read_only": 1
   },
@@ -281,7 +281,7 @@
   {
    "description": "The field will be <b>read only</b> when this condition is met.",
    "fieldname": "read_only_depends_on_plain",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "<font color=\"secondary\">Conditions To Make This Field Read Only</font>",
    "read_only": 1
   },
@@ -329,7 +329,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-11 14:00:40.500746",
+ "modified": "2025-10-12 21:16:23.801759",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",
