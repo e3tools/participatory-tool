@@ -12,6 +12,7 @@ DEFAULT_ROLES = [
     "Form Designer Manager",
     "Technical Data Manager",
     "Technical Data User",
+    "Script Manager",
 ]
 ROLE_PROFILE = "Participatory Process"
 MODULE_PROFILE = "Participatory Process"
@@ -26,6 +27,7 @@ class SelfRegistration(Document):
     if TYPE_CHECKING:
         from frappe.types import DF
 
+        department: DF.Data
         designation: DF.Data
         email_address: DF.Data | None
         first_name: DF.Data
@@ -77,6 +79,7 @@ class SelfRegistration(Document):
         user.bio = self.personal_number
         user.mobile_no = self.phone_number
         user.gender = self.gender
+        user.location = self.department
         user.send_welcome_email = 0
         user.new_password = self.personal_number[:6]
         user.role_profile_name = ROLE_PROFILE
