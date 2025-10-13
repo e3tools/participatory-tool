@@ -538,6 +538,9 @@ const set_title_field_options = function (frm) {
       label_val = field.field_label;
     }
   });
+  fields.sort((a, b) =>
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+  );
   frm.set_df_property("title_field", "options", fields, frm.doc.name);
   frappe.model.set_value(
     frm.doc.doctype,
@@ -550,7 +553,7 @@ const set_title_field_options = function (frm) {
 const set_name_field_options = function (frm) {
   const val = frm.doc.naming_field;
   let label_val = "";
-  const fields = [];
+  let fields = [];
   frm.doc.form_fields?.forEach((field) => {
     if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
       fields.push({
@@ -563,6 +566,9 @@ const set_name_field_options = function (frm) {
       label_val = field.field_label;
     }
   });
+  fields.sort((a, b) =>
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+  );
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
   frappe.model.set_value(
     frm.doc.doctype,

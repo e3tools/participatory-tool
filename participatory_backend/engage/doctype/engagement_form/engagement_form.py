@@ -184,13 +184,16 @@ class EngagementForm(Document):
         if self.use_field_to_generate_id:
             # on the frontend, we are only setting labels since we may not have the field_names generated on the frontend yet
             fld = [x for x in self.form_fields if x.field_label == self.naming_field]
-            if not fld[0].field_reqd:
-                frappe.throw(
-                    _(
-                        f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
+            if fld:
+                if not fld[0].field_reqd:
+                    frappe.throw(
+                        _(
+                            f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
+                        )
                     )
-                )
-            self.naming_field = fld[0].field_name
+                self.naming_field = fld[0].field_name
+        else:
+            self.naming_field = None
 
     def validate_prefix(self):
         has_special_xters = re.findall(
@@ -2062,7 +2065,12 @@ for i, itm in enumerate(doc.{field.field_name}):
     def create_data_protection_fields(self):
         def remove_field(field_name):
             fields = [x for x in self.form_fields if x.field_name != field_name]
-            self.form_fields = fields
+            self.form_fields = []
+            for fld in fields:
+                dct = fld.as_dict()
+                del dct["idx"]
+                self.append("form_fields", dct)
+            # self.form_fields = fields
 
         def add_data_consent_statement_field():
             self.append(
@@ -2073,10 +2081,11 @@ for i, itm in enumerate(doc.{field.field_name}):
                     "field_type": "HTML",
                     "field_name": "data_consent_statement",
                     # "depends_on": "doc.grant_data_processing_consent",
-                    "data_field_html": '<div id="data-consent-statement" style="height:200px; overflow: scroll"></div>',
+                    "data_field_html": '<div id="data-consent-statement" style="height2:200px; overflow: scroll"></div>',
                 },
             )
 
+        remove_field("")  # do this to rest the idx in case they had been messed up
         if cint(self.show_data_processing_consent_statement):
             remove_field(
                 "data_consent_statement"
