@@ -6,12 +6,13 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "personal_number",
   "first_name",
   "middle_name",
   "last_name",
   "gender",
   "column_break_uhiu",
-  "personal_number",
+  "department",
   "designation",
   "phone_number",
   "email_address"
@@ -74,12 +75,18 @@
    "fieldtype": "Data",
    "label": "Email Address",
    "options": "Email"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-17 10:42:22.617048",
+ "modified": "2025-10-12 06:19:59.779069",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Self Registration",
