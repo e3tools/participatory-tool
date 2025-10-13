@@ -68,12 +68,12 @@ frappe.ui.form.on("Engagement Trigger", {
             ) {
               fields.push({
                 label:
-                  el.fieldname +
-                  " (" +
                   __(el.label) +
                   " - " +
+                  " (" +
                   el.fieldtype +
-                  ")",
+                  ") " +
+                  el.fieldname,
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -83,11 +83,14 @@ frappe.ui.form.on("Engagement Trigger", {
               el.options === frm.doc.related_form
             ) {
               link_fields.push({
-                label: el.fieldname + " (" + __(el.label) + ")",
+                label: __(el.label) + " - " + el.fieldname,
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
           });
+          fields.sort((a, b) =>
+            a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+          );
           frm.fields_dict.set_property_after_trigger_items.grid.update_docfield_property(
             "field_to_update",
             "options",
@@ -146,6 +149,9 @@ frappe.ui.form.on("Engagement Trigger", {
               });
             }
           });
+          fields.sort((a, b) =>
+            a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+          );
           frm.fields_dict.related_form_field_items.grid.update_docfield_property(
             "related_form_field",
             "options",
@@ -311,11 +317,11 @@ function get_select_options(df, parent_field) {
 function make_recipient_fields(frm, fields) {
   let receiver_fields = [];
   if (frm.doc.channel === "Email") {
-    receiver_fields = $.map(fields, function (d) {
+    receiver_fields = $.map(fields || [], function (d) {
       // Add User and Email fields from child into select dropdown
       if (frappe.model.table_fields.includes(d.fieldtype)) {
         let child_fields = frappe.get_doc("DocType", d.options).fields;
-        return $.map(child_fields, function (df) {
+        return $.map(child_fields || [], function (df) {
           return df.options == "Email" ||
             (df.options == "User" && df.fieldtype == "Link")
             ? get_select_options(df, d.fieldname)
@@ -330,7 +336,7 @@ function make_recipient_fields(frm, fields) {
       }
     });
   } else if (["WhatsApp", "SMS"].includes(frm.doc.channel)) {
-    receiver_fields = $.map(fields, function (d) {
+    receiver_fields = $.map(fields || [], function (d) {
       return d.options == "Phone" ? get_select_options(d) : null;
     });
   }

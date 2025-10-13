@@ -102,6 +102,7 @@
   },
   {
    "depends_on": "eval:in_list(['Create Another Form Record', 'Update Another Form Record'], doc.outcome_type)",
+   "description": "A new record will be created or an existing record will be updated when the trigger fires",
    "fieldname": "related_form",
    "fieldtype": "Link",
    "label": "Related Form To Be Created/Updated",
@@ -161,6 +162,7 @@
   },
   {
    "depends_on": "eval:in_list(['Update Another Form Record'], doc.outcome_type)",
+   "description": "This is a Link field in the selected Engagement Form that selected that contains a link to the Related Form",
    "fieldname": "field_linking_forms",
    "fieldtype": "Select",
    "label": "Field Linking Current And Related Forms",
@@ -297,7 +299,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-11 12:34:59.890187",
+ "modified": "2025-10-13 07:52:05.512751",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",
