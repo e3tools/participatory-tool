@@ -538,9 +538,9 @@ class EngagementForm(Document):
             doc = frappe.get_doc(
                 {
                     "doctype": "Server Script",
-                    "__newname": f"{self.form_name} - {field.field_label}",
+                    "__newname": f"{self.name} - {field.field_label}",
                     "script_type": "DocType Event",
-                    "reference_doctype": self.form_name,
+                    "reference_doctype": self.name,
                     "doctype_event": "Before Save",
                     "module": MODULE_NAME,
                     "script": f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}",
@@ -552,9 +552,9 @@ class EngagementForm(Document):
                 {
                     "doctype": "Server Script",
                     # "__newname": f"{self.form_name} - {field_label} - {field_name}",
-                    "__newname": f"{self.form_name}",
+                    "__newname": f"{self.name}",
                     "script_type": "DocType Event",
-                    "reference_doctype": self.form_name,
+                    "reference_doctype": self.name,
                     "doctype_event": "Before Save",
                     "module": MODULE_NAME,
                     "script": f"{script}",
@@ -562,7 +562,7 @@ class EngagementForm(Document):
             ).insert(ignore_permissions=True)
 
         # delete scripts in case they exist
-        frappe.db.delete("Server Script", {"reference_doctype": self.form_name})
+        frappe.db.delete("Server Script", {"reference_doctype": self.name})
         # make Server Script for formula fields
 
         script = ""
