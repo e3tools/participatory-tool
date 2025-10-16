@@ -17,6 +17,16 @@ from participatory_backend.engage.doctype.engagement_profile.engagement_profile 
     get_user_emails_by_engagement_profile,
 )
 
+ACCEPTABLE_FIELD_TYPE_CONVERSIONS = [
+    {"src": "Data", "dst": "Read Only", "bidirectional": True},
+    {"src": "Int", "dst": "Float", "bidirectional": False},
+    {"src": "Small Text", "dst": "Text", "bidirectional": True},
+    {"src": "Date", "dst": "DateTime", "bidirectional": False},
+    {"src": "Select", "dst": "Data", "bidirectional": False},
+    {"src": "Link", "dst": "Data", "bidirectional": False},
+    {"src": "Link", "dst": "Read Only", "bidirectional": False},
+]
+
 
 class EngagementTrigger(Document):
     # begin: auto-generated types
@@ -26,9 +36,15 @@ class EngagementTrigger(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import EngageTriggerRecipientItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import EngagementTriggerRelatedFormItem
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import EngagementTriggerUpdateFormFieldItem
+        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import (
+            EngageTriggerRecipientItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import (
+            EngagementTriggerRelatedFormItem,
+        )
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import (
+            EngagementTriggerUpdateFormFieldItem,
+        )
 
         activate_trigger_on: DF.Literal["", "New", "Value Change", "Time Lapse"]
         attach_print: DF.Check
@@ -40,7 +56,13 @@ class EngagementTrigger(Document):
         field_linking_forms: DF.Literal[None]
         form_group: DF.Data | None
         message: DF.Code | None
-        outcome_type: DF.Literal["", "None", "Update Current Record", "Create Another Form Record", "Update Another Form Record"]
+        outcome_type: DF.Literal[
+            "",
+            "None",
+            "Update Current Record",
+            "Create Another Form Record",
+            "Update Another Form Record",
+        ]
         print_format: DF.Link | None
         recipients: DF.Table[EngageTriggerRecipientItem]
         related_form: DF.Link | None
@@ -153,14 +175,20 @@ class EngagementTrigger(Document):
             else:  # do not proceed further
                 return
 
-        if source_field.get("fieldtype") != target_field.get("fieldtype"):
+        # if source_field.get("fieldtype") != target_field.get("fieldtype"):
+        if not are_field_types_convertible(
+            source_field.get("fieldtype"), target_field.get("fieldtype")
+        ):
             frappe.throw(
                 _(
                     f"Row {idx}. The field type of the related form and the current form must be the same."
                 )
             )
         # if links , ensure the options are the same
-        if source_field.get("fieldtype") == "Link":
+        if (
+            source_field.get("fieldtype") == "Link"
+            and target_field.get("fieldtype") == "Link"
+        ):
             source_options = source_field.get("options")
             target_options = target_field.get("options")
             if source_options != target_options:
@@ -171,7 +199,10 @@ class EngagementTrigger(Document):
                 )
 
         # if select, ensure both source and target have same choices
-        if source_field.get("fieldtype") == "Select":
+        if (
+            source_field.get("fieldtype") == "Select"
+            and target_field.get("fieldtype") == "Select"
+        ):
             source_options = [
                 option for option in source_field.get("options").split("\n") if option
             ]
@@ -296,6 +327,18 @@ class EngagementTrigger(Document):
                 document.flags.ignore_mandatory = True
                 document.save(ignore_permissions=True)
                 document.flags.in_notification_update = False
+
+                # attempt to save again to trigger any associated triggers
+                # set _doc_before_save to None to ensure that triggers on new run
+                from participatory_backend.engage_trigger.triggers_util import (
+                    run_triggers,
+                )
+
+                run_triggers(
+                    doc=document, method=None, has_doc_just_been_created_by_trigger=True
+                )
+                # document._doc_before_save = None
+                # document.save(ignore_permissions=True)
 
                 if is_new:
                     document.add_comment(
@@ -621,3 +664,24 @@ def get_reference_doctype(doc):
 
 def get_reference_name(doc):
     return doc.parent if doc.meta.istable else doc.name
+
+
+def are_field_types_convertible(src_type, dst_type):
+    """
+    Are fields types compatible
+    """
+    if src_type == dst_type:
+        return True
+    # check where src and dst types are acceptable
+    # Also check if the src and dst accept bidirectional conversion
+    res = [
+        x
+        for x in ACCEPTABLE_FIELD_TYPE_CONVERSIONS
+        if (x["src"] == src_type and x["dst"] == dst_type)
+        or (
+            x["src"] == dst_type and x["dst"] == src_type and x["bidirectional"] == True
+        )
+    ]
+    if res:
+        return True
+    return False

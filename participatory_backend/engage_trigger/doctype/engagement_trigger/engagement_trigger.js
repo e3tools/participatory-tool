@@ -16,6 +16,7 @@ let UPDATEABLE_TYPES = [
   "Percent",
   "Link",
   "Linked Field",
+  "Read Only",
 ];
 
 frappe.ui.form.on("Engagement Trigger", {
@@ -68,13 +69,14 @@ frappe.ui.form.on("Engagement Trigger", {
               UPDATEABLE_TYPES.includes(el.fieldtype)
             ) {
               fields.push({
-                label:
-                  __(el.label) +
-                  " - " +
-                  " (" +
-                  el.fieldtype +
-                  ") " +
-                  el.fieldname,
+                // label:
+                //   __(el.label) +
+                //   " - " +
+                //   " (" +
+                //   el.fieldtype +
+                //   ") " +
+                //   el.fieldname,
+                label: make_field_display_value(el),
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -139,13 +141,14 @@ frappe.ui.form.on("Engagement Trigger", {
           r.message.forEach((el) => {
             if (!frappe.model.no_value_type.includes(el.fieldtype)) {
               fields.push({
-                label:
-                  el.fieldname +
-                  " (" +
-                  __(el.label) +
-                  " - " +
-                  el.fieldtype +
-                  ")",
+                // label:
+                //   el.fieldname +
+                //   " (" +
+                //   __(el.label) +
+                //   " - " +
+                //   el.fieldtype +
+                //   ")",
+                label: make_field_display_value(el),
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -311,7 +314,8 @@ function get_select_options(df, parent_field) {
 
   return {
     value: select_value,
-    label: df.fieldname + " (" + __(df.label, null, df.parent) + ")",
+    //label: df.fieldname + " (" + __(df.label, null, df.parent) + ")",
+    label: df.label + " (" + __(df.fieldname, null, df.parent) + ")",
   };
 }
 
@@ -363,6 +367,10 @@ function format_filter_for_python(filter) {
   const field = `doc.${filter[1]}`;
   const operator = filter[2];
   const value = filter[3];
+}
+
+function make_field_display_value(df) {
+  return __(df.label) + " (" + df.fieldname + " - " + df.fieldtype + ")";
 }
 
 // frappe.ui.form.on("Engagement Trigger Update Field Item", {
