@@ -15,6 +15,7 @@ let UPDATEABLE_TYPES = [
   "Select",
   "Percent",
   "Link",
+  "Linked Field",
 ];
 
 frappe.ui.form.on("Engagement Trigger", {
@@ -330,6 +331,7 @@ function make_recipient_fields(frm, fields) {
         // Add User and Email fields from parent into select dropdown
       } else {
         return d.options == "Email" ||
+          d.fieldtype == "Read Only" ||
           (d.options == "User" && d.fieldtype == "Link")
           ? get_select_options(d)
           : null;
@@ -337,7 +339,9 @@ function make_recipient_fields(frm, fields) {
     });
   } else if (["WhatsApp", "SMS"].includes(frm.doc.channel)) {
     receiver_fields = $.map(fields || [], function (d) {
-      return d.options == "Phone" ? get_select_options(d) : null;
+      return d.options == "Phone" || d.fieldtype == "Read Only"
+        ? get_select_options(d)
+        : null;
     });
   }
 
