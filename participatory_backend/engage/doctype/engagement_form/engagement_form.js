@@ -10,6 +10,50 @@ const ALLOWED_TITLE_FIELD_TYPES = [
   "Select",
 ];
 
+// frappe.ui.ValidationGroup = class ValidationsDialog extends WidgetDialog {
+//   constructor(opts) {
+//     super(opts);
+//   }
+
+//   get_fields() {
+//     return [
+//       {
+//         fieldtype: "Link",
+//         fieldname: "custom_block_name",
+//         label: "Custom Block Name",
+//         options: "Custom HTML Block",
+//         reqd: 1,
+//         get_query: () => {
+//           return {
+//             query:
+//               "frappe.desk.doctype.custom_html_block.custom_html_block.get_custom_blocks_for_user",
+//           };
+//         },
+//       },
+//     ];
+//   }
+// };
+
+frappe.ui.ValidationGroup = class extends frappe.ui.FilterGroup {
+  constructor(opts) {
+    super(opts);
+    this.hide_fields_column(opts);
+  }
+  hide_fields_column(opts) {
+    let wrapper = opts.parent;
+    let res = wrapper.find(".awesomplete");
+  }
+  add_error_message_column() {}
+  reorder_columns() {}
+  on_change() {}
+};
+
+frappe.ui.Validation = class extends frappe.ui.Filter {
+  constructor(opts) {
+    super(opts);
+  }
+};
+
 frappe.ui.form.on("Engagement Form", {
   setup(frm) {
     frm.set_query("field_child_doctype", "form_fields", function () {
@@ -197,11 +241,14 @@ frappe.ui.form.on("Engagement Form Field", {
   form_render: function (frm, cdt, cdn) {
     frm.trigger("field_type", cdt, cdn);
     const fld = frm.cur_grid.get_field("set_depends_on");
-    if (fld) {
+    if (fld && fld.$input) {
       fld.$input.addClass("btn btn-link");
     }
+    if (!frm.doc.__islocal) {
+      frm.trigger("setup_filter", cdt, cdn);
+      frm.trigger("setup_validations", cdt, cdn);
+    }
     // frm.trigger("make_additional_child_table_fields", cdt, cdn);
-
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -284,12 +331,12 @@ frappe.ui.form.on("Engagement Form Field", {
       ["field_default", ""],
       ["field_in_list_view", false],
       ["field_is_search_field", false],
-      ["set_mandatory_depends_on", null],
-      ["mandatory_depends_on_plain", ""], //set to null to avoid overriding incase user selected another field type
-      ["mandatory_depends_on", ""], //set to null to avoid overriding incase user selected another field type
-      ["set_read_only_depends_on", null], //set to null to avoid overriding incase user selected another field type
-      ["read_only_depends_on_plain", null], //set to null to avoid overriding incase user selected another field type
-      ["read_only_depends_on", ""],
+      //["set_mandatory_depends_on", null],
+      //["mandatory_depends_on_plain", ""], //set to null to avoid overriding incase user selected another field type
+      //["mandatory_depends_on", ""], //set to null to avoid overriding incase user selected another field type
+      //["set_read_only_depends_on", null], //set to null to avoid overriding incase user selected another field type
+      //["read_only_depends_on_plain", null], //set to null to avoid overriding incase user selected another field type
+      //["read_only_depends_on", ""],
       ["description", ""],
       ["max_height", ""],
     ];
@@ -397,8 +444,6 @@ frappe.ui.form.on("Engagement Form Field", {
 
     if (!dialog) return;
 
-    debugger;
-
     let wrapper = dialog.fields_dict.additional_linked_table_fields.wrapper;
     wrapper.replaceChildren();
 
@@ -490,7 +535,142 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.dirty();
     });
   },
+  setup_filter: function (frm, cdt, cdn) {
+    set_field_conditions(frm, cdt, cdn);
+  },
+  setup_validations: function (frm, cdt, cdn) {
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    if (!dialog) return;
+    let child = locals[cdt][cdn];
+    let filter_group = new engage.ui.ValidationGroup({
+      parent: dialog.fields_dict["validations_area"].$wrapper, // this.dialog.get_field("display_filter_area").$wrapper,
+      doctype: frm.doc.name, // frm.doc.doctype, // frm.doc.name,
+      fieldname: child.field_name,
+      on_change: () => {
+        let filters = filter_group.get_filters();
+        // each filter returns an list of arrays where each 6th item in the array says if the field is hidden or not.
+        // We need to remove the value of hidden property as they are not important in the backend context
+        filters = (filters || []).map((el) => {
+          return el.length == 5 ? el.slice(0, 5) : el;
+        });
+        frappe.model.set_value(
+          cdt,
+          cdn,
+          "validations",
+          JSON.stringify(filters)
+        );
+        console.log("Validations: ", filters);
+      },
+      field_to_validate: child.field_name,
+    });
+
+    frappe.model.with_doctype(frm.doc.form_name, () => {
+      const existing_filters = generate_filter_from_json(
+        frm,
+        cdt,
+        cdn,
+        "validations"
+      ); // child[filters_field_name];
+      if (existing_filters) {
+        // let filters = JSON.parse(existing_filters);
+        if (existing_filters /*filters*/) {
+          filter_group.add_filters_to_filter_group(
+            existing_filters /*filters*/
+          );
+        }
+      }
+    });
+  },
 });
+
+function set_field_conditions(frm, cdt, cdn) {
+  function _set_conditions(filters_field_name, filters_loading_field_name) {
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    if (!dialog) return;
+
+    let filter_group = new frappe.ui.FilterGroup({
+      parent: dialog.fields_dict[filters_loading_field_name].$wrapper, // this.dialog.get_field("display_filter_area").$wrapper,
+      doctype: frm.doc.name, // frm.doc.doctype, // frm.doc.name,
+      on_change: () => {
+        let filters = filter_group.get_filters();
+        // each filter returns an list of arrays where each 5th item in the array says if the field is hidden or not.
+        // We need to remove the value of hidden property as they are not important in the backend context
+        filters = (filters || []).map((el) => {
+          return el.length == 5 ? el.slice(0, 4) : el;
+        });
+        frappe.model.set_value(
+          cdt,
+          cdn,
+          filters_field_name,
+          JSON.stringify(filters)
+        );
+        console.log("Filters: ", filters);
+      },
+    });
+    let child = locals[cdt][cdn];
+    const existing_filters = generate_filter_from_json(
+      frm,
+      cdt,
+      cdn,
+      filters_field_name
+    ); // child[filters_field_name];
+    if (existing_filters) {
+      // let filters = JSON.parse(existing_filters);
+      if (existing_filters /*filters*/) {
+        filter_group.add_filters_to_filter_group(existing_filters /*filters*/);
+      }
+    }
+  }
+
+  function show_field(fieldname) {
+    // this.dialog.set_df_property(fieldname, "hidden", false);
+    frm.set_df_property(
+      "form_fields",
+      "hidden",
+      false,
+      frm.doc.name,
+      fieldname, //"display_field_filters_loading",
+      cdn
+    );
+  }
+
+  function hide_field(fieldname) {
+    // this.dialog.set_df_property(fieldname, "hidden", true);
+    frm.set_df_property(
+      "form_fields",
+      "hidden",
+      true,
+      frm.doc.name,
+      fieldname, //"display_field_filters_loading",
+      cdn
+    );
+  }
+
+  // _create_filter_area();
+  frappe.model.with_doctype(frm.doc.form_name, () => {
+    _set_conditions("depends_on_plain", "display_field_filters_loading");
+    _set_conditions(
+      "mandatory_depends_on_plain",
+      "mandatory_field_filters_loading"
+    );
+    _set_conditions(
+      "read_only_depends_on_plain",
+      "readonly_field_filters_loading"
+    );
+  });
+}
+
+function generate_filter_from_json(frm, cdt, cdn, filters_field_name) {
+  let filters = [];
+  if (!frm.doc.__islocal && frm.doc.form_name && frm.doc.form_fields) {
+    let child = locals[cdt][cdn];
+    filters = frappe.utils.get_filter_from_json(
+      child[filters_field_name],
+      frm.doc.doctype //frm.doc.form_name
+    );
+  }
+  return filters;
+}
 
 function edit_filters(frm, doctype, existing_filters, on_add_filter) {
   let field_doctype = doctype;

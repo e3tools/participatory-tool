@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "details_section",
   "field_label",
   "field_type",
   "field_name",
@@ -34,18 +35,38 @@
   "field_in_list_view",
   "field_is_search_field",
   "set_depends_on",
-  "depends_on_plain",
-  "depends_on",
   "set_mandatory_depends_on",
-  "mandatory_depends_on_plain",
-  "mandatory_depends_on",
   "set_read_only_depends_on",
-  "read_only_depends_on_plain",
-  "read_only_depends_on",
-  "formula",
-  "description",
   "max_height",
-  "html"
+  "html",
+  "section_break_acfv",
+  "validations_area",
+  "validations",
+  "column_break_allr",
+  "validations_evaluation_criteria",
+  "validation_error_message",
+  "section_break_toqf",
+  "display_field_filters_loading",
+  "depends_on",
+  "depends_on_plain",
+  "column_break_oiqq",
+  "depends_on_evaluation_criteria",
+  "section_break_qfkl",
+  "mandatory_field_filters_loading",
+  "mandatory_depends_on",
+  "mandatory_depends_on_plain",
+  "column_break_dtsz",
+  "mandatory_depends_on_evaluation_criteria",
+  "section_break_klmn",
+  "readonly_field_filters_loading",
+  "read_only_depends_on",
+  "read_only_depends_on_plain",
+  "column_break_eoig",
+  "readonly_depends_on_evaluation_criteria",
+  "formula__descriptions_section",
+  "formula",
+  "column_break_ivyn",
+  "description"
  ],
  "fields": [
   {
@@ -150,18 +171,21 @@
   {
    "fieldname": "depends_on",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Conditions To Display This Field",
    "read_only": 1
   },
   {
    "fieldname": "mandatory_depends_on",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Conditions To Make This Field Mandatory",
    "read_only": 1
   },
   {
    "fieldname": "read_only_depends_on",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "Conditions To Make This Field Read Only",
    "read_only": 1
   },
@@ -198,6 +222,7 @@
    "read_only": 1
   },
   {
+   "description": "This text will appear below the field to appear as guidance",
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
@@ -252,17 +277,20 @@
   {
    "fieldname": "set_mandatory_depends_on",
    "fieldtype": "Button",
+   "hidden": 1,
    "label": "<font color=\"primary\"><b>Set Conditions To Make This Field Mandatory</b></font>"
   },
   {
    "fieldname": "set_depends_on",
    "fieldtype": "Button",
+   "hidden": 1,
    "label": "<font color=\"primary\"><b>Set Conditions To Display This Field</b></font>"
   },
   {
    "description": "The field will be <b>displayed</b> when this condition is met.",
    "fieldname": "depends_on_plain",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "<font color=\"secondary\">Conditions To Display This Field</font>",
    "read_only": 1
   },
@@ -270,18 +298,21 @@
    "description": "The field will be <b>mandatory</b> when this condition is met.",
    "fieldname": "mandatory_depends_on_plain",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "<font color=\"secondary\">Conditions To Make This Field Mandatory</font>",
    "read_only": 1
   },
   {
    "fieldname": "set_read_only_depends_on",
    "fieldtype": "Button",
+   "hidden": 1,
    "label": "<font color=\"primary\"><b>Set Conditions To Make This Field Readonly</b></font>"
   },
   {
    "description": "The field will be <b>read only</b> when this condition is met.",
    "fieldname": "read_only_depends_on_plain",
    "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "<font color=\"secondary\">Conditions To Make This Field Read Only</font>",
    "read_only": 1
   },
@@ -323,13 +354,129 @@
    "fieldname": "hide_seconds",
    "fieldtype": "Check",
    "label": "Hide Seconds"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": " Details"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_toqf",
+   "fieldtype": "Section Break",
+   "label": "<font color=\"secondary\">Show Field: </font><font color=\"error\">This field will be displayed when these conditions are met</font>"
+  },
+  {
+   "fieldname": "display_field_filters_loading",
+   "fieldtype": "HTML"
+  },
+  {
+   "depends_on": "eval:doc.depends_on_plain && doc.depends_on_plain != \"[]\"",
+   "fieldname": "depends_on_evaluation_criteria",
+   "fieldtype": "Select",
+   "label": "How to evaluate the conditions",
+   "mandatory_depends_on": "eval:doc.depends_on_plain && doc.depends_on_plain != \"[]\"",
+   "options": "All these conditions must be met\nAny of these conditions must be met"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_qfkl",
+   "fieldtype": "Section Break",
+   "label": "<font color=\"secondary\">Field is Mandatory:</font> <font color=\"error\">This field will be mandatory when these conditions are met</font>"
+  },
+  {
+   "depends_on": "eval:doc.mandatory_depends_on_plain && doc.mandatory_depends_on_plain != \"[]\"",
+   "fieldname": "mandatory_depends_on_evaluation_criteria",
+   "fieldtype": "Select",
+   "label": "How to evaluate the conditions",
+   "options": "All these conditions must be met\nAny of these conditions must be met"
+  },
+  {
+   "fieldname": "mandatory_field_filters_loading",
+   "fieldtype": "HTML"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_klmn",
+   "fieldtype": "Section Break",
+   "label": "<font color=\"secondary\">Read Only: </font><font color=\"error\">This field will be read only when these conditions are met</font>"
+  },
+  {
+   "depends_on": "eval:doc.read_only_depends_on_plain && doc.read_only_depends_on_plain != \"[]\"",
+   "fieldname": "readonly_depends_on_evaluation_criteria",
+   "fieldtype": "Select",
+   "label": "How to evaluate the conditions",
+   "mandatory_depends_on": "eval:doc.read_only_depends_on_plain && doc.read_only_depends_on_plain != \"[]\"",
+   "options": "All these conditions must be met\nAny of these conditions must be met"
+  },
+  {
+   "fieldname": "readonly_field_filters_loading",
+   "fieldtype": "HTML"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_acfv",
+   "fieldtype": "Section Break",
+   "label": "<font color=\"secondary\">Validations: </font><font color=\"error\">The value specified for this field must meet the below conditions</font>"
+  },
+  {
+   "fieldname": "validations_area",
+   "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "validations",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Validations",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:(doc.validations && doc.validations != \"[]\")",
+   "fieldname": "validations_evaluation_criteria",
+   "fieldtype": "Select",
+   "label": "How to apply the validations",
+   "mandatory_depends_on": "eval:(doc.validations && doc.validations != \"[]\")",
+   "options": "All these conditions must be met\nAny of these conditions must be met"
+  },
+  {
+   "fieldname": "column_break_allr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:(doc.validations && doc.validations != \"[]\")",
+   "fieldname": "validation_error_message",
+   "fieldtype": "Data",
+   "label": "Validation Error Message",
+   "mandatory_depends_on": "eval:(doc.validations && doc.validations != \"[]\")"
+  },
+  {
+   "fieldname": "column_break_oiqq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dtsz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_eoig",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "formula__descriptions_section",
+   "fieldtype": "Section Break",
+   "label": "Formula / Description"
+  },
+  {
+   "fieldname": "column_break_ivyn",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-12 21:16:23.801759",
+ "modified": "2025-11-18 17:58:15.519416",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",

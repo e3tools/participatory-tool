@@ -34,6 +34,10 @@ app_license = "MIT"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
+doctype_js = {
+    "Engagement Form": ["public/js/validation.js", "public/js/validation_group.js"],
+}
+
 # Home Pages
 # ----------
 

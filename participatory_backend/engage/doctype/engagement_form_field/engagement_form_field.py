@@ -18,6 +18,7 @@ class EngagementFormField(Document):
 		data_field_html: DF.TextEditor | None
 		data_field_options: DF.Literal["", "Email", "Phone", "URL"]
 		depends_on: DF.SmallText | None
+		depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
 		depends_on_plain: DF.SmallText | None
 		description: DF.SmallText | None
 		field_child_doctype: DF.Link | None
@@ -45,6 +46,7 @@ class EngagementFormField(Document):
 		linked_form: DF.Literal[None]
 		linked_form_property: DF.Literal[None]
 		mandatory_depends_on: DF.SmallText | None
+		mandatory_depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
 		mandatory_depends_on_plain: DF.SmallText | None
 		max_height: DF.Data | None
 		parent: DF.Data
@@ -52,5 +54,9 @@ class EngagementFormField(Document):
 		parenttype: DF.Data
 		read_only_depends_on: DF.SmallText | None
 		read_only_depends_on_plain: DF.SmallText | None
+		readonly_depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
+		validation_error_message: DF.Data | None
+		validations: DF.SmallText | None
+		validations_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
 	# end: auto-generated types
 	pass

@@ -54,6 +54,9 @@ WEB_FORM_LINK_FIELD_DOC_FILTER_PATTERN = re.compile(
 )
 DOC_PREFIX_FORMULA = "doc."
 
+AND_CONDITION_TEXT = "All these conditions must be met"
+OR_CONDITION_TEXT = "Any of these conditions must be met"
+
 
 class FieldFilter:
     source_field: str
@@ -563,8 +566,8 @@ class EngagementForm(Document):
 
         # delete scripts in case they exist
         frappe.db.delete("Server Script", {"reference_doctype": self.name})
-        # make Server Script for formula fields
 
+        # make Server Script for formula fields
         script = ""
         formula_fields = [
             x
@@ -574,6 +577,38 @@ class EngagementForm(Document):
         for field in formula_fields:
             # _create_script(field)
             script += f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}"
+
+        # make script for field level validations
+        fields_with_validations: list[EngagementFormField] = [
+            x for x in self.form_fields if x.validations
+        ]
+
+        for field in fields_with_validations:
+            validations = json.loads(field.validations)
+            and_or = (
+                "and"
+                if field.validations_evaluation_criteria
+                == "All these conditions must be met"
+                else "or"
+            )
+            script += f"""
+# Validate {field.field_name}
+and_or = '{and_or}'
+res = False if and_or == 'or' else True
+"""
+            for idx, validation in enumerate(validations):
+                ## validations are of the form
+                # ['Immediate Supervisor Approve Request', 'status', '=', 'Reject', 'Approve', False]
+                fld = validation[1]
+                operator = validation[2]
+                val = validation[3]
+                error_msg = validation[4]
+                script += f"""
+res = res {and_or} frappe.utils.evaluate_filters(doc, [{validation}])"""
+            script += f"""
+if not res:
+    frappe.throw(_("{frappe.bold(field.field_label)}. {field.validation_error_message}"))
+        """
 
         # make server scripts for mandatory checkbox since frappe does not enforce mandatory for checkbox out of the box
         checkboxes = [
@@ -865,7 +900,12 @@ for i, itm in enumerate(doc.{field.field_name}):
                 return form_field.field_choices
             return None
 
-        def _set_depends_on(exp: str, ref_field: dict, ref_field_property: str):
+        def _set_depends_on(
+            exp: str,
+            ref_field: dict,
+            ref_field_property: str,
+            evaluation_criteria=AND_CONDITION_TEXT,
+        ):
             """
             Set depends on expression
             """
@@ -876,7 +916,7 @@ for i, itm in enumerate(doc.{field.field_name}):
                 return exp
             else:
                 return convert_depends_on_conditions_to_js_format(
-                    eval(exp), ref_field, ref_field_property
+                    eval(exp), ref_field, ref_field_property, evaluation_criteria
                 )  # return f"eval:{exp}"
 
         def _get_field_type(field: EngagementFormField):
@@ -904,10 +944,16 @@ for i, itm in enumerate(doc.{field.field_name}):
                 if (
                     form_field.depends_on
                 ):  # if field is required, it cannot be shown optionally depending on conditions
-                    bold = frappe.bold("Display Depends On")
-                    frappe.throw(
-                        f"Row {form_field.idx}. The field cannot be required yet the value of {bold} has been set."
-                    )
+                    # bold = frappe.bold("Display Depends On")
+                    # frappe.throw(
+                    #    f"Row {form_field.idx}. The field cannot be required yet the value of {bold} has been set."
+                    # )
+                    # Instead of throwing an error, just disable reqd
+                    form_field.field_reqd = 0
+
+            # If readonly_depends_on is set, then the field cannot be read only
+            if form_field.read_only_depends_on:
+                form_field.field_readonly = 0
 
         _sanitize_field()
         form_field.field_name = form_field.field_name.strip()
@@ -917,16 +963,19 @@ for i, itm in enumerate(doc.{field.field_name}):
             exp=form_field.depends_on_plain,
             ref_field=form_field,
             ref_field_property="Display Depends On",
+            evaluation_criteria=form_field.depends_on_evaluation_criteria,
         )
         form_field.mandatory_depends_on = _set_depends_on(
             exp=form_field.mandatory_depends_on_plain,
             ref_field=form_field,
             ref_field_property="Mandatory Depends On",
+            evaluation_criteria=form_field.mandatory_depends_on_evaluation_criteria,
         )
         form_field.read_only_depends_on = _set_depends_on(
             exp=form_field.read_only_depends_on_plain,
             ref_field=form_field,
             ref_field_property="Readonly Depends On",
+            evaluation_criteria=form_field.readonly_depends_on_evaluation_criteria,
         )
 
         readonly = form_field.field_readonly
@@ -2128,11 +2177,14 @@ def sanitize_web_filters(filters):
 
 
 def convert_depends_on_conditions_to_js_format(
-    conditions: list, ref_field: dict, ref_field_property: str
+    conditions: list,
+    ref_field: dict,
+    ref_field_property: str,
+    evaluation_criteria=AND_CONDITION_TEXT,
 ) -> str:
     """Convert filters entry as set by the Filters Dialog into js format i.e the format with eval:doc....
     Args:
-                    conditions (list): condition e.g [["Test Form Five","sample_gender","=","Male"]]
+     conditions (list): condition e.g [["Test Form Five","sample_gender","=","Male"]]
     """
     if len(conditions) <= 0:
         return ""
@@ -2147,7 +2199,7 @@ def convert_depends_on_conditions_to_js_format(
             + ")"
         )
         if i != len(conditions) - 1:
-            res += " && "
+            res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
 
     return res
 
