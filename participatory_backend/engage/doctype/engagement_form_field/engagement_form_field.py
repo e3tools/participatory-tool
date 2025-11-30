@@ -25,8 +25,8 @@ class EngagementFormField(Document):
 		field_choices: DF.SmallText | None
 		field_default: DF.Data | None
 		field_doctype: DF.Link | None
-		field_filters: DF.Data | None
-		field_filters_plain: DF.Data | None
+		field_filters: DF.SmallText | None
+		field_filters_plain: DF.SmallText | None
 		field_hidden: DF.Check
 		field_in_list_view: DF.Check
 		field_is_backend_field: DF.Check

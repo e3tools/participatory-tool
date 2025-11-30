@@ -19,9 +19,6 @@
   "field_length",
   "field_doctype",
   "field_child_doctype",
-  "set_filters",
-  "field_filters_plain",
-  "field_filters",
   "field_precision",
   "data_field_html",
   "additional_linked_table_fields",
@@ -39,6 +36,13 @@
   "set_read_only_depends_on",
   "max_height",
   "html",
+  "link_field_section",
+  "html_vjrk",
+  "link_filters_area",
+  "field_filters_plain",
+  "column_break_yvio",
+  "set_filters",
+  "field_filters",
   "section_break_acfv",
   "validations_area",
   "validations",
@@ -242,9 +246,9 @@
    "mandatory_depends_on": "eval:in_list([\"Linked Field\"], doc.field_type)"
   },
   {
-   "depends_on": "eval:in_list([\"Link\"], doc.field_type)",
    "fieldname": "field_filters",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
+   "hidden": 1,
    "label": "<b>Filters</b>",
    "read_only": 1
   },
@@ -265,6 +269,7 @@
    "description": "When you need to reference a value for a specific field, specify the filter value as <b>doc.FIELD_ID</b> e.g doc.sub_county",
    "fieldname": "set_filters",
    "fieldtype": "Button",
+   "hidden": 1,
    "label": "<font color=\"primary\"><b>Set Filters</b></font>"
   },
   {
@@ -320,8 +325,10 @@
    "depends_on": "eval:in_list([\"Link\"], doc.field_type)",
    "description": "Filters that will be applied when retrieving list of records from the selected form. ",
    "fieldname": "field_filters_plain",
-   "fieldtype": "Data",
-   "label": "<b>Filters</b>"
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "<b>Filters</b>",
+   "read_only": 1
   },
   {
    "depends_on": "eval:doc.field_type == 'HTML'",
@@ -362,6 +369,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.depends_on_plain && doc.depends_on_plain != \"[]\"",
    "fieldname": "section_break_toqf",
    "fieldtype": "Section Break",
    "label": "<font color=\"secondary\">Show Field: </font><font color=\"error\">This field will be displayed when these conditions are met</font>"
@@ -380,6 +388,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.mandatory_depends_on_plain && doc.mandatory_depends_on_plain != \"[]\"",
    "fieldname": "section_break_qfkl",
    "fieldtype": "Section Break",
    "label": "<font color=\"secondary\">Field is Mandatory:</font> <font color=\"error\">This field will be mandatory when these conditions are met</font>"
@@ -397,6 +406,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.read_only_depends_on_plain && doc.read_only_depends_on_plain != \"[]\"",
    "fieldname": "section_break_klmn",
    "fieldtype": "Section Break",
    "label": "<font color=\"secondary\">Read Only: </font><font color=\"error\">This field will be read only when these conditions are met</font>"
@@ -415,6 +425,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.validations && doc.validations != \"[]\"",
    "fieldname": "section_break_acfv",
    "fieldtype": "Section Break",
    "label": "<font color=\"secondary\">Validations: </font><font color=\"error\">The value specified for this field must meet the below conditions</font>"
@@ -463,6 +474,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.formula || doc.description",
    "fieldname": "formula__descriptions_section",
    "fieldtype": "Section Break",
    "label": "Formula / Description"
@@ -470,13 +482,37 @@
   {
    "fieldname": "column_break_ivyn",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:in_list([\"Link\"], doc.field_type)",
+   "description": " ",
+   "fieldname": "link_filters_area",
+   "fieldtype": "HTML"
+  },
+  {
+   "depends_on": "eval:in_list([\"Link\"], doc.field_type)",
+   "fieldname": "html_vjrk",
+   "fieldtype": "HTML",
+   "options": "<font color=\"primary\"><b>Set Filters</b></font><br>\n<div class=\"text-small\">\nClick on the Add Filter button below. When you need to reference a value for a specific field, specify the filter value as <b>doc.FIELD_ID</b> e.g doc.sub_county\n</div>\n<hr>"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.field_filters_plain && doc.field_filters_plain != \"[]\"",
+   "depends_on": "eval:in_list([\"Link\"], doc.field_type)",
+   "fieldname": "link_field_section",
+   "fieldtype": "Section Break",
+   "label": "<font color=\"secondary\">Link Field Filters </font> "
+  },
+  {
+   "fieldname": "column_break_yvio",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-18 17:58:15.519416",
+ "modified": "2025-11-30 04:58:23.306946",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",
