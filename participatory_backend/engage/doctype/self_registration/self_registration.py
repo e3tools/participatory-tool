@@ -13,6 +13,7 @@ DEFAULT_ROLES = [
     "Technical Data Manager",
     "Technical Data User",
     "Script Manager",
+    "Insights User",
 ]
 ROLE_PROFILE = "Participatory Process"
 MODULE_PROFILE = "Participatory Process"
@@ -55,13 +56,23 @@ class SelfRegistration(Document):
                     {
                         "doctype": "Module Profile",
                         "module_profile_name": MODULE_PROFILE,
+                        # "block_modules": [
+                        #     {"module": "Core"},
+                        #     {"module": "Desk"},
+                        #     {"module": "Engage"},
+                        #     {"module": "Engage Trigger"},
+                        #     {"module": "Gis"},
+                        #     {"module": "Technical"},
+                        # ],
                         "block_modules": [
-                            {"module": "Core"},
-                            {"module": "Desk"},
-                            {"module": "Engage"},
-                            {"module": "Engage Trigger"},
-                            {"module": "Gis"},
-                            {"module": "Technical"},
+                            {"module": "Automation"},
+                            {"module": "Contacts"},
+                            {"module": "Custom"},
+                            {"module": "Email"},
+                            {"module": "Integrate"},
+                            {"module": "Integrations"},
+                            {"module": "Social"},
+                            {"module": "Website"},
                         ],
                     }
                 ).insert()
