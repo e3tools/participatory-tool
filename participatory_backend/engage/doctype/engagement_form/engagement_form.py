@@ -335,6 +335,12 @@ class EngagementForm(Document):
                 fld.read_only_depends_on = ""
                 fld.description = ""
                 fld.max_height = ""
+                if not fld.field_name:
+                    fld.field_name = (
+                        fld.field_type.lower().replace(" ", "_")
+                        + "_"
+                        + str(random_string(4))
+                    )
 
             if fld.field_type != "Duration":
                 fld.hide_days = False
@@ -403,6 +409,14 @@ class EngagementForm(Document):
                 if target_child_table_doctype:
                     field.target_child_table_doctype = target_child_table_doctype
                 self.read_only_fields_map.append(field)
+
+            # If field_id is not specified, then field label must be specified to ensure an id is generated using the field label
+            if not fld.field_label and not fld.field_name:
+                frappe.throw(
+                    _(
+                        f"Row {fld.idx}. You must specify either the field label or the field id"
+                    )
+                )
 
     def validate_linked_fields(self):
         fields = [x for x in self.form_fields if x.field_type == "Linked Field"]
@@ -880,6 +894,8 @@ for i, itm in enumerate(doc.{field.field_name}):
                 return form_field.data_field_html
             if form_field.field_type == "Data":
                 return form_field.data_field_options
+            if form_field.field_type == "Email":
+                return "Email"
             if form_field.field_type == "Link":
                 return form_field.field_doctype
             if form_field.field_type in ["Table", "Table MultiSelect"]:
@@ -922,6 +938,8 @@ for i, itm in enumerate(doc.{field.field_name}):
         def _get_field_type(field: EngagementFormField):
             if field.field_type == "Linked Field":
                 return self.get_linked_field_field_type(field)
+            if field.field_type == "Email":
+                return "Data"
             return field.field_type
 
         def _get_fetch_from(field: EngagementFormField):
@@ -2113,7 +2131,11 @@ for i, itm in enumerate(doc.{field.field_name}):
 
     def create_data_protection_fields(self):
         def remove_field(field_name):
-            fields = [x for x in self.form_fields if x.field_name != field_name]
+            fields = [
+                x
+                for x in self.form_fields
+                if (not x.is_new() and x.field_name != field_name) or x.is_new()
+            ]
             self.form_fields = []
             for fld in fields:
                 dct = fld.as_dict()
@@ -2134,7 +2156,7 @@ for i, itm in enumerate(doc.{field.field_name}):
                 },
             )
 
-        remove_field("")  # do this to rest the idx in case they had been messed up
+        remove_field("")  # do this to reset the idx in case they had been messed up
         if cint(self.show_data_processing_consent_statement):
             remove_field(
                 "data_consent_statement"
