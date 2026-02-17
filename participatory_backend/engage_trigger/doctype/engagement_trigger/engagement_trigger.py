@@ -4,7 +4,15 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import cast, validate_email_address, today, getdate, nowtime, now
+from frappe.utils import (
+    cast,
+    cint,
+    validate_email_address,
+    today,
+    getdate,
+    nowtime,
+    now,
+)
 from frappe.email.doctype.notification.notification import get_context
 from frappe.core.doctype.sms_settings.sms_settings import send_sms
 import json
@@ -36,15 +44,9 @@ class EngagementTrigger(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import (
-            EngageTriggerRecipientItem,
-        )
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import (
-            EngagementTriggerRelatedFormItem,
-        )
-        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import (
-            EngagementTriggerUpdateFormFieldItem,
-        )
+        from participatory_backend.engage_trigger.doctype.engage_trigger_recipient_item.engage_trigger_recipient_item import EngageTriggerRecipientItem
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_related_form_item.engagement_trigger_related_form_item import EngagementTriggerRelatedFormItem
+        from participatory_backend.engage_trigger.doctype.engagement_trigger_update_form_field_item.engagement_trigger_update_form_field_item import EngagementTriggerUpdateFormFieldItem
 
         activate_trigger_on: DF.Literal["", "New", "Value Change", "Time Lapse"]
         attach_print: DF.Check
@@ -56,13 +58,7 @@ class EngagementTrigger(Document):
         field_linking_forms: DF.Literal[None]
         form_group: DF.Data | None
         message: DF.Code | None
-        outcome_type: DF.Literal[
-            "",
-            "None",
-            "Update Current Record",
-            "Create Another Form Record",
-            "Update Another Form Record",
-        ]
+        outcome_type: DF.Literal["", "None", "Update Current Record", "Create Another Form Record", "Update Another Form Record"]
         print_format: DF.Link | None
         recipients: DF.Table[EngageTriggerRecipientItem]
         related_form: DF.Link | None
@@ -74,6 +70,9 @@ class EngagementTrigger(Document):
         set_property_after_trigger_items: DF.Table[EngagementTriggerUpdateFormFieldItem]
         subject: DF.Data | None
         trigger_name: DF.Data
+        via_email: DF.Check
+        via_sms: DF.Check
+        via_whatsapp: DF.Check
     # end: auto-generated types
     pass
 
@@ -441,14 +440,14 @@ class EngagementTrigger(Document):
     def communicate(self, doc):
         context = get_context(doc)
         try:
-            if self.channel == "Email":
+            if self.channel == "Email" or cint(self.via_email):
                 self.send_an_email(doc, context)
 
             # if self.channel == "Slack":
             #     self.send_a_slack_msg(doc, context)
 
-            # if self.channel == "SMS":
-            #     self.send_sms(doc, context)
+            if self.channel == "SMS" or cint(self.via_sms):
+                self.send_sms(doc, context)
 
             if self.channel == "System Notification" or self.send_system_notification:
                 self.create_system_notification(doc, context)
@@ -620,34 +619,36 @@ class EngagementTrigger(Document):
 
         return list(set(recipients)), list(set(cc)), list(set(bcc))
 
-    # def get_receiver_list(self, doc, context):
-    # 	"""return receiver list based on the doc field and role specified"""
-    # 	receiver_list = []
-    # 	for recipient in self.recipients:
-    # 		if recipient.condition:
-    # 			if not frappe.safe_eval(recipient.condition, None, context):
-    # 				continue
+    def get_receiver_list(self, doc, context):
+        """return receiver list based on the doc field and role specified"""
+        receiver_list = []
+        for recipient in self.recipients:
+            if recipient.condition:
+                if not frappe.safe_eval(recipient.condition, None, context):
+                    continue
 
-    # 		# For sending messages to the owner's mobile phone number
-    # 		if recipient.receiver_by_document_field == "owner":
-    # 			receiver_list += get_user_info([dict(user_name=doc.get("owner"))], "mobile_no")
-    # 		# For sending messages to the number specified in the receiver field
-    # 		elif recipient.receiver_by_document_field:
-    # 			receiver_list.append(doc.get(recipient.receiver_by_document_field))
+            # For sending messages to the owner's mobile phone number
+            if recipient.receiver_by_document_field == "owner":
+                receiver_list += get_user_info(
+                    [dict(user_name=doc.get("owner"))], "mobile_no"
+                )
+            # For sending messages to the number specified in the receiver field
+            elif recipient.receiver_by_document_field:
+                receiver_list.append(doc.get(recipient.receiver_by_document_field))
 
-    # 		# For sending messages to specified role
-    # 		if recipient.receiver_by_role:
-    # 			receiver_list += get_info_based_on_role(
-    # 				recipient.receiver_by_role, "mobile_no", ignore_permissions=True
-    # 			)
+            # For sending messages to specified role
+            if recipient.receiver_by_role:
+                receiver_list += get_info_based_on_role(
+                    recipient.receiver_by_role, "mobile_no", ignore_permissions=True
+                )
 
-    # 	return receiver_list
+        return receiver_list
 
-    # def send_sms(self, doc, context):
-    # 	send_sms(
-    # 		receiver_list=self.get_receiver_list(doc, context),
-    # 		msg=frappe.render_template(self.message, context),
-    # 	)
+    def send_sms(self, doc, context):
+        send_sms(
+            receiver_list=self.get_receiver_list(doc, context),
+            msg=frappe.render_template(self.message, context),
+        )
 
 
 def get_emails_from_template(template, context):
