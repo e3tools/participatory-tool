@@ -590,7 +590,7 @@ class EngagementForm(Document):
         ]
         for field in formula_fields:
             # _create_script(field)
-            script += f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}"
+            script += f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}{NEWLINE}"
 
         # make script for field level validations
         fields_with_validations: list[EngagementFormField] = [
