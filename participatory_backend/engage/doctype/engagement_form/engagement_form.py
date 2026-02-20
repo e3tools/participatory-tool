@@ -27,6 +27,7 @@ from participatory_backend.engage.doctype.engagement_form_field.engagement_form_
 from frappe.model.naming import make_autoname
 import random
 import string
+from frappe.core.doctype.doctype.doctype import DocType
 
 SELECT_MULTIPLE = 1
 TABLE_MULTISELECT = 2
@@ -41,6 +42,7 @@ ALLOWED_FORMULA_FIELD_TYPES = [
     "Datetime",
     "Int",
     "Float",
+    "Small Text",
     "Text",
     "Time",
 ]
@@ -51,6 +53,9 @@ WEB_FORM_LINK_FIELD_DOC_FILTER_PATTERN = re.compile(
     r"(\"|\')(web_form_values\..*?)(\"|\')"
 )
 DOC_PREFIX_FORMULA = "doc."
+
+AND_CONDITION_TEXT = "All these conditions must be met"
+OR_CONDITION_TEXT = "Any of these conditions must be met"
 
 
 class FieldFilter:
@@ -107,7 +112,7 @@ class EngagementForm(Document):
         form_permissions: DF.Table[EngagementFormPermission]
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
-        naming_field: DF.Data | None
+        naming_field: DF.Literal[None]
         naming_format: DF.Data | None
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
@@ -121,6 +126,7 @@ class EngagementForm(Document):
         success_message: DF.SmallText | None
         title_field: DF.Literal[None]
         use_field_to_generate_id: DF.Check
+        user_cannot_create: DF.Check
         web_title: DF.Data | None
     # end: auto-generated types
 
@@ -158,6 +164,7 @@ class EngagementForm(Document):
         self.web_title = self.web_title or ""
         if not self.web_title:
             self.web_title = self.form_name
+        self.validate_naming_field()
         self.validate_prefix()
         self.validate_fields()
         self.route = (
@@ -166,10 +173,30 @@ class EngagementForm(Document):
         self.public_url = self.get_route(fqdn=True)
         self.create_data_protection_fields()
         self.make_doctype()
+        if self.user_cannot_create:
+            self.enable_web_form = False
         if self.field_is_table:
             self.enable_web_form = False
         self.generate_image_fields()
         self.publish_form()
+
+    def validate_naming_field(self):
+        """
+        Validate that the field used as naming field is mandatory
+        """
+        if self.use_field_to_generate_id:
+            # on the frontend, we are only setting labels since we may not have the field_names generated on the frontend yet
+            fld = [x for x in self.form_fields if x.field_label == self.naming_field]
+            if fld:
+                if not fld[0].field_reqd:
+                    frappe.throw(
+                        _(
+                            f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
+                        )
+                    )
+                self.naming_field = fld[0].field_name
+        else:
+            self.naming_field = None
 
     def validate_prefix(self):
         has_special_xters = re.findall(
@@ -294,6 +321,33 @@ class EngagementForm(Document):
 
     def validate_fields(self):
         for fld in self.form_fields:
+            if fld.field_type in ["Column Break", "Section Break"]:
+                fld.field_reqd = False
+                fld.field_readonly = False
+                fld.field_hidden = False
+                fld.field_is_backend_field = False
+                fld.field_default = ""
+                fld.field_in_list_view = False
+                fld.field_is_search_field = False
+                fld.mandatory_depends_on_plain = ""
+                fld.mandatory_depends_on = ""
+                fld.read_only_depends_on_plain = ""
+                fld.read_only_depends_on = ""
+                fld.description = ""
+                fld.max_height = ""
+                if not fld.field_name:
+                    fld.field_name = (
+                        fld.field_type.lower().replace(" ", "_")
+                        + "_"
+                        + str(random_string(4))
+                    )
+
+            if fld.field_type != "Duration":
+                fld.hide_days = False
+                fld.hide_seconds = False
+            else:
+                fld.hide_days = fld.hide_days
+                fld.hide_seconds = fld.hide_seconds
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
             if not fld.field_name:  # when field has not been set
@@ -355,6 +409,14 @@ class EngagementForm(Document):
                 if target_child_table_doctype:
                     field.target_child_table_doctype = target_child_table_doctype
                 self.read_only_fields_map.append(field)
+
+            # If field_id is not specified, then field label must be specified to ensure an id is generated using the field label
+            if not fld.field_label and not fld.field_name:
+                frappe.throw(
+                    _(
+                        f"Row {fld.idx}. You must specify either the field label or the field id"
+                    )
+                )
 
     def validate_linked_fields(self):
         fields = [x for x in self.form_fields if x.field_type == "Linked Field"]
@@ -432,10 +494,10 @@ class EngagementForm(Document):
                     fields[-1]["read_only"] = True
 
         if self.is_new():
-            doc = frappe.new_doc("DocType")
+            doc: DocType = frappe.new_doc("DocType")
             doc.name = self.name
         else:
-            doc = frappe.get_doc("DocType", self.name)
+            doc: DocType = frappe.get_doc("DocType", self.name)
 
         doc.fields = []
         for field in fields:
@@ -463,6 +525,9 @@ class EngagementForm(Document):
         if cint(self.use_field_to_generate_id):
             doc.naming_rule = "By fieldname"
             doc.allow_rename = 1
+            doc.autoname = self._get_naming_rule()
+
+        doc.autoname = self._get_naming_rule()
 
         if cint(self.field_is_table):
             doc.naming_rule = None
@@ -474,6 +539,7 @@ class EngagementForm(Document):
         doc.hide_toolbar = 0
         doc.make_attachments_public = self.make_attachments_public
         doc.istable = self.field_is_table
+        doc.in_create = self.user_cannot_create
         self._set_roles(doc)
         self._set_states(doc)
         doc.save(ignore_permissions=True)
@@ -489,25 +555,139 @@ class EngagementForm(Document):
             doc = frappe.get_doc(
                 {
                     "doctype": "Server Script",
-                    "__newname": f"{self.form_name} - {field.field_label}",
+                    "__newname": f"{self.name} - {field.field_label}",
                     "script_type": "DocType Event",
-                    "reference_doctype": self.form_name,
+                    "reference_doctype": self.name,
                     "doctype_event": "Before Save",
                     "module": MODULE_NAME,
                     "script": f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}",
                 }
             ).insert(ignore_permissions=True)
 
+        def _create_child_table_script(field_name, field_label, script):
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Server Script",
+                    # "__newname": f"{self.form_name} - {field_label} - {field_name}",
+                    "__newname": f"{self.name}",
+                    "script_type": "DocType Event",
+                    "reference_doctype": self.name,
+                    "doctype_event": "Before Save",
+                    "module": MODULE_NAME,
+                    "script": f"{script}",
+                }
+            ).insert(ignore_permissions=True)
+
         # delete scripts in case they exist
-        frappe.db.delete("Server Script", {"reference_doctype": self.form_name})
-        # make Server Script
+        frappe.db.delete("Server Script", {"reference_doctype": self.name})
+
+        # make Server Script for formula fields
+        script = ""
         formula_fields = [
             x
             for x in self.form_fields
             if x.formula and x.field_type in ALLOWED_FORMULA_FIELD_TYPES
         ]
         for field in formula_fields:
-            _create_script(field)
+            # _create_script(field)
+            script += f"{DOC_PREFIX_FORMULA}{field.field_name}={field.formula}{NEWLINE}"
+
+        # make script for field level validations
+        fields_with_validations: list[EngagementFormField] = [
+            x for x in self.form_fields if x.validations
+        ]
+
+        for field in fields_with_validations:
+            validations = json.loads(field.validations)
+            and_or = (
+                "and"
+                if field.validations_evaluation_criteria
+                == "All these conditions must be met"
+                else "or"
+            )
+            script += f"""
+# Validate {field.field_name}
+and_or = '{and_or}'
+res = False if and_or == 'or' else True
+"""
+            for idx, validation in enumerate(validations):
+                ## validations are of the form
+                # ['Immediate Supervisor Approve Request', 'status', '=', 'Reject', 'Approve', False]
+                fld = validation[1]
+                operator = validation[2]
+                val = validation[3]
+                error_msg = validation[4]
+                script += f"""
+res = res {and_or} frappe.utils.evaluate_filters(doc, [{validation}])"""
+            script += f"""
+if not res:
+    frappe.throw(_("{frappe.bold(field.field_label)}. {field.validation_error_message}"))
+        """
+
+        # make server scripts for mandatory checkbox since frappe does not enforce mandatory for checkbox out of the box
+        checkboxes = [
+            x for x in self.form_fields if x.field_type == "Check" and x.field_reqd
+        ]
+        if checkboxes:
+            for chk in checkboxes:
+                script += f"""
+if not (doc.{chk.field_name}):
+    frappe.throw(_("{chk.field_label} must be checked"))
+                       """
+            # frappe.get_doc(
+            #     {
+            #         "doctype": "Server Script",
+            #         "__newname": f"{self.form_name} - mandatory checkboxes",
+            #         "script_type": "DocType Event",
+            #         "reference_doctype": self.form_name,
+            #         "doctype_event": "Before Save",
+            #         "module": MODULE_NAME,
+            #         "script": script,
+            #     }
+            # ).insert(ignore_permissions=True)
+
+        # check if child table has formula
+        # Server script formulas execute code not frappe events. so write the raw code not inside a function and
+        # remember the code must have doc as the prefix if you are referring to a field in the document
+        fields = [x for x in self.form_fields if x.field_type == "Table"]
+        for field in fields:
+            table_fields = frappe.db.get_all(
+                "Engagement Form Field",
+                filters={"parent": field.field_child_doctype},
+                fields=[
+                    "field_label",
+                    "field_name",
+                    "formula",
+                    "field_type",
+                    "field_reqd",
+                ],
+            )
+            formula_fields = [x for x in table_fields if x.formula]
+            if formula_fields:
+                script += f"""
+for item in doc.{field.field_name}:"""
+                for fld in formula_fields:
+                    # replace doc. with item. in the formulas
+                    script += f"""								
+    item.{fld.field_name} = {fld.formula.replace("doc.", "item.")} 
+                            """
+                # _create_child_table_script(field.field_name, field.field_label, script)
+
+            # create server script for child table where checkboxes is mandatory
+            checkboxes = [
+                x for x in table_fields if x.field_type == "Check" and x.field_reqd
+            ]
+            if checkboxes:
+                for chk in checkboxes:
+                    script += f"""
+for i, itm in enumerate(doc.{field.field_name}):
+    if not (itm.{chk.field_name}):
+        frappe.throw(_(f"Row {{i+1}}. {chk.field_label} must be checked"))
+    """
+                # _create_child_table_script(chk.field_name, chk.field_label, script)
+
+        if script:
+            _create_child_table_script(None, None, script)
 
     def sanitize_filters(self, filters):
         """
@@ -595,10 +775,10 @@ class EngagementForm(Document):
         full_script = f'frappe.ui.form.on("{doctype}", {OPEN_BRACKET}{NEWLINE}onload: function(frm) {OPEN_BRACKET}'
         for field in filter_fields:
             filter = """frm.set_query("{field_name}", function() {open_bracket}
-					return {open_bracket}
-							"filters": {filters}
-						{close_bracket};
-					{close_bracket});""".format(
+                    return {open_bracket}
+                            "filters": {filters}
+                        {close_bracket};
+                    {close_bracket});""".format(
                 field_name=field.field_name,
                 filters=self.sanitize_filters(field.field_filters_plain),
                 open_bracket=OPEN_BRACKET,
@@ -612,20 +792,20 @@ class EngagementForm(Document):
         if cint(self.show_data_processing_consent_statement):
             # retrieve data consent statement
             retrieve = f"""{NEWLINE}
-						//if(frm.doc.__islocal){OPEN_BRACKET}
-							frappe.call({OPEN_BRACKET}
-								method: "participatory_backend.engage.doctype.engagement_form.engagement_form.get_data_processing_consent_statement", 
-								freeze: true,
-								callback: function (r) {OPEN_BRACKET}
-									let fields = [];
-									if (r.message) {OPEN_BRACKET} 
-										// $(frm.fields_dict.data_consent_statement.wrapper).find('#data-consent-statement').html(r.message);
-										$("#data-consent-statement").html(r.message);
-									{CLOSE_BRACKET}
-								{CLOSE_BRACKET},
-							{CLOSE_BRACKET});
-						//{CLOSE_BRACKET}
-						"""
+                        //if(frm.doc.__islocal){OPEN_BRACKET}
+                            frappe.call({OPEN_BRACKET}
+                                method: "participatory_backend.engage.doctype.engagement_form.engagement_form.get_data_processing_consent_statement", 
+                                freeze: true,
+                                callback: function (r) {OPEN_BRACKET}
+                                    let fields = [];
+                                    if (r.message) {OPEN_BRACKET} 
+                                        // $(frm.fields_dict.data_consent_statement.wrapper).find('#data-consent-statement').html(r.message);
+                                        $("#data-consent-statement").html(r.message);
+                                    {CLOSE_BRACKET}
+                                {CLOSE_BRACKET},
+                            {CLOSE_BRACKET});
+                        //{CLOSE_BRACKET}
+                        """
             full_script += retrieve
 
         full_script += CLOSE_BRACKET
@@ -634,18 +814,18 @@ class EngagementForm(Document):
         validate = ""
         if cint(self.show_data_processing_consent_statement):
             validate += f""",{NEWLINE}
-						validate: function(frm){OPEN_BRACKET}
-							if(!frm.doc.grant_data_processing_consent) {OPEN_BRACKET}
-								frappe.throw("You must agree to grant data processing consent");
-							{CLOSE_BRACKET}
-						{CLOSE_BRACKET},"""
+                        validate: function(frm){OPEN_BRACKET}
+                            if(!frm.doc.grant_data_processing_consent) {OPEN_BRACKET}
+                                frappe.throw("You must agree to grant data processing consent");
+                            {CLOSE_BRACKET}
+                        {CLOSE_BRACKET},"""
             full_script += validate
 
         # add scripts to filter child tables
         for key in self.child_table_filter_scripts.keys():
             full_script += f""",{NEWLINE}
-								{self.child_table_filter_scripts[key]}
-							"""
+                                {self.child_table_filter_scripts[key]}
+                            """
 
         # close script
         full_script += "});"
@@ -671,6 +851,10 @@ class EngagementForm(Document):
     def _set_roles(self, doc):
         if cint(self.field_is_table):
             return  # if child table, no permissions as the child table will inherit parent form's permissions
+
+        # if there is All or Guest role, set user to administrator so that one is allowed to set these roles
+        if [x for x in self.form_permissions if x.role in ["All", "Guest"]]:
+            frappe.set_user("Administrator")
 
         for perm in self.form_permissions:
             r = frappe._dict()
@@ -710,6 +894,8 @@ class EngagementForm(Document):
                 return form_field.data_field_html
             if form_field.field_type == "Data":
                 return form_field.data_field_options
+            if form_field.field_type == "Email":
+                return "Email"
             if form_field.field_type == "Link":
                 return form_field.field_doctype
             if form_field.field_type in ["Table", "Table MultiSelect"]:
@@ -730,7 +916,12 @@ class EngagementForm(Document):
                 return form_field.field_choices
             return None
 
-        def _set_depends_on(exp: str, ref_field: dict, ref_field_property: str):
+        def _set_depends_on(
+            exp: str,
+            ref_field: dict,
+            ref_field_property: str,
+            evaluation_criteria=AND_CONDITION_TEXT,
+        ):
             """
             Set depends on expression
             """
@@ -741,12 +932,14 @@ class EngagementForm(Document):
                 return exp
             else:
                 return convert_depends_on_conditions_to_js_format(
-                    eval(exp), ref_field, ref_field_property
+                    eval(exp), ref_field, ref_field_property, evaluation_criteria
                 )  # return f"eval:{exp}"
 
         def _get_field_type(field: EngagementFormField):
             if field.field_type == "Linked Field":
                 return self.get_linked_field_field_type(field)
+            if field.field_type == "Email":
+                return "Data"
             return field.field_type
 
         def _get_fetch_from(field: EngagementFormField):
@@ -769,10 +962,16 @@ class EngagementForm(Document):
                 if (
                     form_field.depends_on
                 ):  # if field is required, it cannot be shown optionally depending on conditions
-                    bold = frappe.bold("Display Depends On")
-                    frappe.throw(
-                        f"Row {form_field.idx}. The field cannot be required yet the value of {bold} has been set."
-                    )
+                    # bold = frappe.bold("Display Depends On")
+                    # frappe.throw(
+                    #    f"Row {form_field.idx}. The field cannot be required yet the value of {bold} has been set."
+                    # )
+                    # Instead of throwing an error, just disable reqd
+                    form_field.field_reqd = 0
+
+            # If readonly_depends_on is set, then the field cannot be read only
+            if form_field.read_only_depends_on:
+                form_field.field_readonly = 0
 
         _sanitize_field()
         form_field.field_name = form_field.field_name.strip()
@@ -782,16 +981,19 @@ class EngagementForm(Document):
             exp=form_field.depends_on_plain,
             ref_field=form_field,
             ref_field_property="Display Depends On",
+            evaluation_criteria=form_field.depends_on_evaluation_criteria,
         )
         form_field.mandatory_depends_on = _set_depends_on(
             exp=form_field.mandatory_depends_on_plain,
             ref_field=form_field,
             ref_field_property="Mandatory Depends On",
+            evaluation_criteria=form_field.mandatory_depends_on_evaluation_criteria,
         )
         form_field.read_only_depends_on = _set_depends_on(
             exp=form_field.read_only_depends_on_plain,
             ref_field=form_field,
             ref_field_property="Readonly Depends On",
+            evaluation_criteria=form_field.readonly_depends_on_evaluation_criteria,
         )
 
         readonly = form_field.field_readonly
@@ -833,6 +1035,8 @@ class EngagementForm(Document):
             "description": form_field.description,
             "max_height": form_field.max_height,
             "hidden": form_field.field_hidden,
+            "hide_days": form_field.hide_days,
+            "hide_seconds": form_field.hide_seconds,
         }
         return field
 
@@ -843,12 +1047,12 @@ class EngagementForm(Document):
         Return true if the linked field property is a child table
 
         Returns: tuple[bool, str, str, str, str]:
-                bool: Whether this linked property references a Child Table field
-                trigger_field_name: Field whose value will determine the values to query
-                trigger_field_doctype: Doctype linked to Trigger Field
-                trigger_field_grid_name: child table property of trigger field Doctype whose values we will pull
-                trigger_field_grid_doctype: Doctype of child table field of the trigger field Doctype whose values we will pull
-                target_field: child table of the current form whose values we will be pulling from the trigger form
+                        bool: Whether this linked property references a Child Table field
+                        trigger_field_name: Field whose value will determine the values to query
+                        trigger_field_doctype: Doctype linked to Trigger Field
+                        trigger_field_grid_name: child table property of trigger field Doctype whose values we will pull
+                        trigger_field_grid_doctype: Doctype of child table field of the trigger field Doctype whose values we will pull
+                        target_field: child table of the current form whose values we will be pulling from the trigger form
         """
         # get the doctype that is linked to this parent field
         parent_field = [
@@ -1057,36 +1261,36 @@ class EngagementForm(Document):
             self.child_table_filter_scripts[
                 trigger_field
             ] = f"""{NEWLINE}
-						{trigger_field}: function(frm){OPEN_BRACKET}
-							frm.clear_table("{target_field}");
-							if(!frm.doc.{trigger_field}){OPEN_BRACKET}
-								return;
-							{CLOSE_BRACKET}
-							frappe.call({OPEN_BRACKET}
-								method: "participatory_backend.engage.doctype.engagement_form.engagement_form.get_doc",
-								args: {OPEN_BRACKET}
-									doctype: '{trigger_field_doctype}',
-									docname: frm.doc.{trigger_field}
-								{CLOSE_BRACKET},
-								freeze: true,
-								callback: function (r) {OPEN_BRACKET}
-								let items = [];
-								if (r.message) {OPEN_BRACKET}
-									items = r.message.{trigger_field_table_property};  
-								{CLOSE_BRACKET}
-								items.forEach((el) => {OPEN_BRACKET}
-									var child = frm.add_child('{target_field}');
-									for(const key of Object.keys(el)){OPEN_BRACKET}
-									    if(!['name', 'parent', 'parentfield', 'parenttype', 'doctype'].includes(key)){OPEN_BRACKET}
-									        frappe.model.set_value(child.doctype, child.name, key, el[key]);
-									    {CLOSE_BRACKET}
-									{CLOSE_BRACKET}
-								{CLOSE_BRACKET});
-								frm.refresh_field('{target_field}');
-								frm.get_field("{target_field}").grid.refresh();
-								{CLOSE_BRACKET},
-							{CLOSE_BRACKET});
-						{CLOSE_BRACKET}"""
+                        {trigger_field}: function(frm){OPEN_BRACKET}
+                            frm.clear_table("{target_field}");
+                            if(!frm.doc.{trigger_field}){OPEN_BRACKET}
+                                return;
+                            {CLOSE_BRACKET}
+                            frappe.call({OPEN_BRACKET}
+                                method: "participatory_backend.engage.doctype.engagement_form.engagement_form.get_doc",
+                                args: {OPEN_BRACKET}
+                                    doctype: '{trigger_field_doctype}',
+                                    docname: frm.doc.{trigger_field}
+                                {CLOSE_BRACKET},
+                                freeze: true,
+                                callback: function (r) {OPEN_BRACKET}
+                                let items = [];
+                                if (r.message) {OPEN_BRACKET}
+                                    items = r.message.{trigger_field_table_property};  
+                                {CLOSE_BRACKET}
+                                items.forEach((el) => {OPEN_BRACKET}
+                                    var child = frm.add_child('{target_field}');
+                                    for(const key of Object.keys(el)){OPEN_BRACKET}
+                                        if(!['name', 'parent', 'parentfield', 'parenttype', 'doctype'].includes(key)){OPEN_BRACKET}
+                                            frappe.model.set_value(child.doctype, child.name, key, el[key]);
+                                        {CLOSE_BRACKET}
+                                    {CLOSE_BRACKET}
+                                {CLOSE_BRACKET});
+                                frm.refresh_field('{target_field}');
+                                frm.get_field("{target_field}").grid.refresh();
+                                {CLOSE_BRACKET},
+                            {CLOSE_BRACKET});
+                        {CLOSE_BRACKET}"""
 
         (
             is_table,
@@ -1115,10 +1319,10 @@ class EngagementForm(Document):
         Frappe does not natively support multi-select dropdown
         To achieve this, we have to use Table Multi Select option
         To do this, we will do the following. Step 1 and 2 are only relevant when we are selecting from static options and not from a Link
-                1. Create a `Normal DocType` named after the field label. Concatenate `Form Name` with `Field Label`
-                2. For each specified option, create it as a record of the `Normal DocType` just created
-                3. Create a `Child DocType` and add a link field to it referencing the entries in the `Normal DocType`
-                4. Create a Table MultiSelect and link it the current doctype
+                        1. Create a `Normal DocType` named after the field label. Concatenate `Form Name` with `Field Label`
+                        2. For each specified option, create it as a record of the `Normal DocType` just created
+                        3. Create a `Child DocType` and add a link field to it referencing the entries in the `Normal DocType`
+                        4. Create a Table MultiSelect and link it the current doctype
         When selecting multiple from an exisiting table, the source table must not be a child table, so we will create a corresponding child table
         """
 
@@ -1129,14 +1333,14 @@ class EngagementForm(Document):
             a normal Table field without the need to create other doctypes storing the options
 
             To do this, we will do the following. Step 1 and 2 are only relevant when we are selecting from static options and not from a Link
-                    1. Create a Child Table with a single field. Create a `Normal DocType` named after the field label.
-                            - Concatenate `Form Name` with `Field Label` to generate the Child Doctype name
-                            - If the form name is changed, rename the child doctype instead of deleting so as to preserve any existing data. We track
-                              a related table by using the description field in the DocType document
-                            - To generate the single field
-                                    * If the options are static (Multi-Select), create a Select field
-                                    * If the options are a Link (Multi-Select Table), create a Link field
-                    2. Create a new Field of type Table and set the options as the table you just generated
+                            1. Create a Child Table with a single field. Create a `Normal DocType` named after the field label.
+                                            - Concatenate `Form Name` with `Field Label` to generate the Child Doctype name
+                                            - If the form name is changed, rename the child doctype instead of deleting so as to preserve any existing data. We track
+                                              a related table by using the description field in the DocType document
+                                            - To generate the single field
+                                                            * If the options are static (Multi-Select), create a Select field
+                                                            * If the options are a Link (Multi-Select Table), create a Link field
+                            2. Create a new Field of type Table and set the options as the table you just generated
             """
 
             def make_field():
@@ -1165,10 +1369,10 @@ class EngagementForm(Document):
 
             # Step 1. Make Child Doctype
             """
-			It is not possible to have duplicate child doctypes since the name is generated by
-			concatenating name of engagement form with the field name. If field_name is changed,
-			that becomes a new Child DocType
-			"""
+            It is not possible to have duplicate child doctypes since the name is generated by
+            concatenating name of engagement form with the field name. If field_name is changed,
+            that becomes a new Child DocType
+            """
             child_doctype_name = self.make_child_doctype_name(form_field)
             child_doctype_exists = frappe.db.exists("DocType", child_doctype_name)
 
@@ -1325,7 +1529,7 @@ class EngagementForm(Document):
         """
         Delete any child tables created as a result of Select Multiple.
         NB: Do not delete any child table if the field type is Table MultiSelect as such
-                child doctypes are those already existing in the system
+                        child doctypes are those already existing in the system
         """
         if not self.is_new() and hasattr(
             self, "_doc_before_save"
@@ -1379,7 +1583,7 @@ class EngagementForm(Document):
         Get route for the published form
 
         Args:
-                fdqn: return a fully qualified domain name
+                        fdqn: return a fully qualified domain name
         """
         if self.field_is_table:
             return None
@@ -1402,36 +1606,36 @@ class EngagementForm(Document):
 
         def _make_web_form_css():
             css = """
-				.web-form-title h1 {
-					font-size: 20px !important; 
-				}
+                .web-form-title h1 {
+                    font-size: 20px !important; 
+                }
 
-				.web-form-banner-image {
-					z-index: 2 !important;
-					margin-bottom: -3rem !important;
-					height: 150px !important;
-					width: 150px !important;
-					text-align: center !important;
-				}
+                .web-form-banner-image {
+                    z-index: 2 !important;
+                    margin-bottom: -3rem !important;
+                    height: 150px !important;
+                    width: 150px !important;
+                    text-align: center !important;
+                }
 
-				.page-header {
-					text-align: center;
-				}
-				"""
+                .page-header {
+                    text-align: center;
+                }
+                """
             if self.show_watermark_image:
                 watermark_img = frappe.db.get_singles_value(
                     "Engage Settings", "watermark_image"
                 )
                 if watermark_img:
                     css += """
-					.page-content-wrapper {{ 
-						background-image: url({watermark_img});
-						background-repeat: no-repeat;
-						background-attachment: fixed;
-						background-size: cover;
-						background-position: center;
-					}}
-					""".format(
+                    .page-content-wrapper {{ 
+                        background-image: url({watermark_img});
+                        background-repeat: no-repeat;
+                        background-attachment: fixed;
+                        background-size: cover;
+                        background-position: center;
+                    }}
+                    """.format(
                         watermark_img=watermark_img
                     )
             return css
@@ -1443,26 +1647,58 @@ class EngagementForm(Document):
                 Make a generic handler for read only values
                 """
                 return """
-						const fetch_value = (doctype, docname, docfield, field_name) => {  
-						const filters = [[doctype, 'name', '=', docname]]; 
-						frappe.call({
-							method:"participatory_backend.api.get_value",
-							args: {
-								doctype: doctype,
-								filters: filters,
-								fields: [docfield],
-								limit_page_length: 0,
-								// parent: "Item Attribute",
-								order_by: "name",
-							},
-							callback: (r) => {
-								if (r.message) {
-									frappe.web_form.set_value(field_name, r.message.name)
-								}
-							},
-						});
-					}
-					"""
+                        const fetch_value = (doctype, docname, docfield, field_name) => {  
+                        const filters = [[doctype, 'name', '=', docname]]; 
+                        frappe.call({
+                            method:"participatory_backend.api.get_value",
+                            args: {
+                                doctype: doctype,
+                                filters: filters,
+                                fields: [docfield],
+                                limit_page_length: 0,
+                                // parent: "Item Attribute",
+                                order_by: "name",
+                            },
+                            callback: (r) => {
+                                if (r.message) {
+                                    frappe.web_form.set_value(field_name, r.message.name)
+                                }
+                            },
+                        });
+                    }
+                    """
+
+            def _make_mandatory_checkboxes():
+                script = """
+                        frappe.web_form.validate = () => {
+                            // Get values from the web form fields
+                            let data = frappe.web_form.get_values();
+                        """
+
+                checkboxes = [
+                    x
+                    for x in self.form_fields
+                    if x.field_type == "Check" and x.field_reqd
+                ]
+
+                for chk in checkboxes:
+                    script += """
+                                if (!data.%s) {
+                                    frappe.msgprint('%s must be checked');
+                                    return false; // Return false to prevent saving the form
+                                }
+                            """ % (
+                        chk.field_name,
+                        chk.field_label,
+                    )
+
+                script += """    
+                        // If all validations pass, return true to allow saving
+                        return true;
+                    };
+                   """
+
+                return script
 
             def _make_readonly_trigger(source_field: str):
                 """
@@ -1484,16 +1720,16 @@ class EngagementForm(Document):
                     ].target_child_table_doctype
                     # readonly_filter = [readonly_fields[0].parent_doctype, 'name', '=', frappe.web_form.get_value(readonly_fields[0].parent_field)]
                     script = """
-					const readonly_fields={readonly_fields};
-					// reset the dependent values
-					for (var i = 0; i < readonly_fields.length; i++) {{  
-						const target_field = readonly_fields[i].target_field;
-						if(readonly_fields[i].is_target_a_child_table) {{
-							frappe.web_form.set_value(target_field, []);
-						}} else {{
-							frappe.web_form.set_value(target_field, '');
-						}}						
-					}}""".format(
+                    const readonly_fields={readonly_fields};
+                    // reset the dependent values
+                    for (var i = 0; i < readonly_fields.length; i++) {{  
+                        const target_field = readonly_fields[i].target_field;
+                        if(readonly_fields[i].is_target_a_child_table) {{
+                            frappe.web_form.set_value(target_field, []);
+                        }} else {{
+                            frappe.web_form.set_value(target_field, '');
+                        }}						
+                    }}""".format(
                         parent_fields=parent_fields,
                         parent_doctype=doctype,
                         parent_field=parent_field,
@@ -1502,42 +1738,42 @@ class EngagementForm(Document):
 
                     if readonly_fields[0].is_target_a_child_table:
                         script += """
-							frappe.web_form.doc.{target_field} = []; // rest as we wait to load from backend
-							frappe.web_form.doc.{target_field}.splice(0);
-							const web_form_values = frappe.web_form.get_values(true, false);
+                            frappe.web_form.doc.{target_field} = []; // rest as we wait to load from backend
+                            frappe.web_form.doc.{target_field}.splice(0);
+                            const web_form_values = frappe.web_form.get_values(true, false);
 
-							frappe.call({{
-								method:"participatory_backend.api.get_list",
-								args: {{
-									doctype: '{target_child_table_grid_doctype}',
-									filters: [
-												['{target_child_table_grid_doctype}', 'parenttype', '=', '{parent_doctype}'],
-												['{target_child_table_grid_doctype}', 'parent', '=', frappe.web_form.get_value('{parent_field}')],
-											],
-									fields: {parent_fields},
-									limit_page_length: 0,
-									order_by: "idx",
-								}},
-								callback: (r) => {{
-									frappe.web_form.doc.{target_field} = [];
-									let items = [];
-									if (r.message) {{
-										items = r.message;  
-									}}
-									items.forEach((item) => {{
-										['name', 'parent', 'parentfield', 'parenttype', 'doctype', 
-										 'creation', 'owner', 'modified', 'modified_by', 'docstatus'].forEach((key) => {{
-											delete item[key]; // remove the values linked to source doc 
-										}});
-										item['__islocal'] = true;
-										item['row_name'] = `row ${{String(item.idx)}}`;
-										frappe.web_form.doc.{target_field}.push(item)
-									}});
-									frappe.web_form.get_field('{target_field}').refresh();
-								
-							}}
-						}});
-						""".format(
+                            frappe.call({{
+                                method:"participatory_backend.api.get_list",
+                                args: {{
+                                    doctype: '{target_child_table_grid_doctype}',
+                                    filters: [
+                                                ['{target_child_table_grid_doctype}', 'parenttype', '=', '{parent_doctype}'],
+                                                ['{target_child_table_grid_doctype}', 'parent', '=', frappe.web_form.get_value('{parent_field}')],
+                                            ],
+                                    fields: {parent_fields},
+                                    limit_page_length: 0,
+                                    order_by: "idx",
+                                }},
+                                callback: (r) => {{
+                                    frappe.web_form.doc.{target_field} = [];
+                                    let items = [];
+                                    if (r.message) {{
+                                        items = r.message;  
+                                    }}
+                                    items.forEach((item) => {{
+                                        ['name', 'parent', 'parentfield', 'parenttype', 'doctype', 
+                                         'creation', 'owner', 'modified', 'modified_by', 'docstatus'].forEach((key) => {{
+                                            delete item[key]; // remove the values linked to source doc 
+                                        }});
+                                        item['__islocal'] = true;
+                                        item['row_name'] = `row ${{String(item.idx)}}`;
+                                        frappe.web_form.doc.{target_field}.push(item)
+                                    }});
+                                    frappe.web_form.get_field('{target_field}').refresh();
+                                
+                            }}
+                        }});
+                        """.format(
                             parent_fields=["*"],
                             parent_doctype=doctype,
                             parent_field=parent_field,
@@ -1547,26 +1783,26 @@ class EngagementForm(Document):
                         )
                     else:
                         script += """
-							frappe.call({{
-								method:"participatory_backend.api.get_list",
-								args: {{
-									doctype: '{parent_doctype}',
-									filters: [['{parent_doctype}', 'name', '=', frappe.web_form.get_value('{parent_field}')]],
-									fields: {parent_fields},
-									limit_page_length: 0,
-									order_by: "name",
-								}},
-								callback: (r) => {{
-									if (r.message && r.message.length > 0) {{
-									for (var i = 0; i < readonly_fields.length; i++) {{  
-										const target_field = readonly_fields[i].target_field;
-										const val = r.message[0][readonly_fields[i].parent_property]
-										frappe.web_form.set_value(target_field, val);
-									}} 
-								}}
-							}}
-						}});
-						""".format(
+                            frappe.call({{
+                                method:"participatory_backend.api.get_list",
+                                args: {{
+                                    doctype: '{parent_doctype}',
+                                    filters: [['{parent_doctype}', 'name', '=', frappe.web_form.get_value('{parent_field}')]],
+                                    fields: {parent_fields},
+                                    limit_page_length: 0,
+                                    order_by: "name",
+                                }},
+                                callback: (r) => {{
+                                    if (r.message && r.message.length > 0) {{
+                                    for (var i = 0; i < readonly_fields.length; i++) {{  
+                                        const target_field = readonly_fields[i].target_field;
+                                        const val = r.message[0][readonly_fields[i].parent_property]
+                                        frappe.web_form.set_value(target_field, val);
+                                    }} 
+                                }}
+                            }}
+                        }});
+                        """.format(
                             parent_fields=parent_fields,
                             parent_doctype=doctype,
                             parent_field=parent_field,
@@ -1673,7 +1909,7 @@ class EngagementForm(Document):
 
                 return field_scripts
 
-            return _make_filter_functions()
+            return _make_filter_functions() + _make_mandatory_checkboxes()
 
         def _make_target_field_function(
             engagement_form_field: EngagementFormField,
@@ -1688,32 +1924,32 @@ class EngagementForm(Document):
             read_only_script = ""
             # _make_readonly_trigger()
             func_script = """const {trigger_function} = () => {{
-					frappe.web_form.fields_dict.{target_field}.set_data([]); // rest as we wait to load from backend
-					const web_form_values = frappe.web_form.get_values(true, false);
-					const filters = {filters};
-					frappe.call({{
-						method:"participatory_backend.api.get_list",
-						args: {{
-							doctype: '{field_doctype}',
-							filters: filters,
-							fields: ["name"],
-							limit_page_length: 0,
-							// parent: "Item Attribute",
-							order_by: "name",
-						}},
-						callback: (r) => {{
-							if (r.message) {{
-							const options = [];
-							for (var i = 0; i < r.message.length; i++) {{
-								options.push(r.message[i].name) 
-							}}
-							frappe.web_form.fields_dict.{target_field}.set_data(options)
-						  }}
-						}},
-					}});
-					//{read_only_script}
-				}}					
-				""".format(
+                    frappe.web_form.fields_dict.{target_field}.set_data([]); // rest as we wait to load from backend
+                    const web_form_values = frappe.web_form.get_values(true, false);
+                    const filters = {filters};
+                    frappe.call({{
+                        method:"participatory_backend.api.get_list",
+                        args: {{
+                            doctype: '{field_doctype}',
+                            filters: filters,
+                            fields: ["name"],
+                            limit_page_length: 0,
+                            // parent: "Item Attribute",
+                            order_by: "name",
+                        }},
+                        callback: (r) => {{
+                            if (r.message) {{
+                            const options = [];
+                            for (var i = 0; i < r.message.length; i++) {{
+                                options.push(r.message[i].name) 
+                            }}
+                            frappe.web_form.fields_dict.{target_field}.set_data(options)
+                          }}
+                        }},
+                    }});
+                    //{read_only_script}
+                }}					
+                """.format(
                 target_field=engagement_form_field.field_name,
                 field_doctype=engagement_form_field.field_doctype,
                 filters=final_filter,
@@ -1734,18 +1970,18 @@ class EngagementForm(Document):
             field_scripts = ""
             for target_field_name in target_fields:
                 field_scripts += """\n
-								frappe.web_form.set_value('{target_field}', ''); // reset the value of target 
-								{trigger_function}() 
-							""".format(
+                                frappe.web_form.set_value('{target_field}', ''); // reset the value of target 
+                                {trigger_function}() 
+                            """.format(
                     target_field=target_field_name,
                     trigger_function=_get_trigger_function_name(target_field_name),
                 )
 
             func = """frappe.web_form.on('{source_field}', (field, value) => {{ 
-						{field_scripts}
-						{readonly_fields_script}
-					}});
-			""".format(
+                        {field_scripts}
+                        {readonly_fields_script}
+                    }});
+            """.format(
                 source_field=source_field_name,
                 field_scripts=field_scripts,
                 readonly_fields_script=readonly_fields_script,
@@ -1767,24 +2003,24 @@ class EngagementForm(Document):
                     if x.field_type == "Link" and x.field_filters
                 ]
                 expression = """
-							let fields = frappe.web_form.fields_dict.{table}.grid.df.fields;
-							for(var i=0; i < fields.length; i++){{
-								let field = fields[i];
-						""".format(
+                            let fields = frappe.web_form.fields_dict.{table}.grid.df.fields;
+                            for(var i=0; i < fields.length; i++){{
+                                let field = fields[i];
+                        """.format(
                     table=table.field_name
                 )
                 if fields:
                     for fld in fields:
                         # get field index
                         expression += """
-								if (field.fieldname === '{field_name}'){{
-									field.get_query = (doc) => {{
-										return {{
-											query: "participatory_backend.api.get_doc_names",
-											filters: {filters},
-										}}
-									}}
-								}}""".format(
+                                if (field.fieldname === '{field_name}'){{
+                                    field.get_query = (doc) => {{
+                                        return {{
+                                            query: "participatory_backend.api.get_doc_names",
+                                            filters: {filters},
+                                        }}
+                                    }}
+                                }}""".format(
                             table=table.field_name,
                             field_name=fld.field_name,
                             filters=sanitize_web_filters(fld.field_filters),
@@ -1895,8 +2131,17 @@ class EngagementForm(Document):
 
     def create_data_protection_fields(self):
         def remove_field(field_name):
-            fields = [x for x in self.form_fields if x.field_name != field_name]
-            self.form_fields = fields
+            fields = [
+                x
+                for x in self.form_fields
+                if (not x.is_new() and x.field_name != field_name) or x.is_new()
+            ]
+            self.form_fields = []
+            for fld in fields:
+                dct = fld.as_dict()
+                del dct["idx"]
+                self.append("form_fields", dct)
+            # self.form_fields = fields
 
         def add_data_consent_statement_field():
             self.append(
@@ -1907,10 +2152,11 @@ class EngagementForm(Document):
                     "field_type": "HTML",
                     "field_name": "data_consent_statement",
                     # "depends_on": "doc.grant_data_processing_consent",
-                    "data_field_html": '<div id="data-consent-statement" style="height:200px; overflow: scroll"></div>',
+                    "data_field_html": '<div id="data-consent-statement" style="height2:200px; overflow: scroll"></div>',
                 },
             )
 
+        remove_field("")  # do this to reset the idx in case they had been messed up
         if cint(self.show_data_processing_consent_statement):
             remove_field(
                 "data_consent_statement"
@@ -1926,6 +2172,7 @@ class EngagementForm(Document):
                     "field_label": "Grant consent for data processing?",
                     "field_type": "Check",
                     "field_name": "grant_data_processing_consent",
+                    "field_reqd": 1,
                 },
             )
 
@@ -1952,11 +2199,14 @@ def sanitize_web_filters(filters):
 
 
 def convert_depends_on_conditions_to_js_format(
-    conditions: list, ref_field: dict, ref_field_property: str
+    conditions: list,
+    ref_field: dict,
+    ref_field_property: str,
+    evaluation_criteria=AND_CONDITION_TEXT,
 ) -> str:
     """Convert filters entry as set by the Filters Dialog into js format i.e the format with eval:doc....
     Args:
-            conditions (list): condition e.g [["Test Form Five","sample_gender","=","Male"]]
+     conditions (list): condition e.g [["Test Form Five","sample_gender","=","Male"]]
     """
     if len(conditions) <= 0:
         return ""
@@ -1971,7 +2221,7 @@ def convert_depends_on_conditions_to_js_format(
             + ")"
         )
         if i != len(conditions) - 1:
-            exp += " && "
+            res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
 
     return res
 
@@ -1982,7 +2232,7 @@ def construct_depends_on_js_expression(
     """Construct a JS expression given a filter condition
 
     Args:
-            condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
+                    condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
     """
     if len(condition) < 4:  # condition has 4 parts
         return ""

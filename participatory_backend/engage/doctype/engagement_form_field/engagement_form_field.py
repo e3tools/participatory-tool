@@ -17,15 +17,16 @@ class EngagementFormField(Document):
 		additional_linked_table_fields: DF.JSON | None
 		data_field_html: DF.TextEditor | None
 		data_field_options: DF.Literal["", "Email", "Phone", "URL"]
-		depends_on: DF.Data | None
-		depends_on_plain: DF.Data | None
+		depends_on: DF.SmallText | None
+		depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
+		depends_on_plain: DF.SmallText | None
 		description: DF.SmallText | None
 		field_child_doctype: DF.Link | None
 		field_choices: DF.SmallText | None
 		field_default: DF.Data | None
 		field_doctype: DF.Link | None
-		field_filters: DF.Data | None
-		field_filters_plain: DF.Data | None
+		field_filters: DF.SmallText | None
+		field_filters_plain: DF.SmallText | None
 		field_hidden: DF.Check
 		field_in_list_view: DF.Check
 		field_is_backend_field: DF.Check
@@ -38,17 +39,24 @@ class EngagementFormField(Document):
 		field_precision: DF.Literal["", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 		field_readonly: DF.Check
 		field_reqd: DF.Check
-		field_type: DF.Literal["", "Attach", "Attach Image", "Check", "Column Break", "Currency", "Data", "Date", "Datetime", "HTML", "Int", "Float", "Geolocation", "Link", "Linked Field", "Select", "Select Multiple", "Section Break", "Text", "Text Editor", "Tab Break", "Table", "Table MultiSelect", "Time"]
-		formula: DF.Data | None
+		field_type: DF.Literal["", "Attach", "Attach Image", "Check", "Column Break", "Currency", "Data", "Date", "Datetime", "Duration", "Email", "HTML", "Int", "Float", "Geolocation", "Link", "Linked Field", "Password", "Percent", "Phone", "Rating", "Select", "Select Multiple", "Section Break", "Signature", "Small Text", "Text", "Text Editor", "Tab Break", "Table", "Table MultiSelect", "Time"]
+		formula: DF.SmallText | None
+		hide_days: DF.Check
+		hide_seconds: DF.Check
 		linked_form: DF.Literal[None]
 		linked_form_property: DF.Literal[None]
-		mandatory_depends_on: DF.Data | None
-		mandatory_depends_on_plain: DF.Data | None
+		mandatory_depends_on: DF.SmallText | None
+		mandatory_depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
+		mandatory_depends_on_plain: DF.SmallText | None
 		max_height: DF.Data | None
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
-		read_only_depends_on: DF.Data | None
-		read_only_depends_on_plain: DF.Data | None
+		read_only_depends_on: DF.SmallText | None
+		read_only_depends_on_plain: DF.SmallText | None
+		readonly_depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
+		validation_error_message: DF.Data | None
+		validations: DF.SmallText | None
+		validations_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
 	# end: auto-generated types
 	pass

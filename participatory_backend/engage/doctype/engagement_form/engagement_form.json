@@ -1,6 +1,5 @@
 {
  "actions": [],
- "allow_rename": 1,
  "autoname": "field:form_name",
  "creation": "2025-03-18 11:42:15.727746",
  "default_view": "List",
@@ -17,6 +16,7 @@
   "naming_format",
   "naming_field",
   "column_break_ygly",
+  "user_cannot_create",
   "description",
   "show_data_processing_consent_statement",
   "section_break_wjep",
@@ -24,22 +24,27 @@
   "settings_tab",
   "show_title_field_in_link",
   "title_field",
-  "form_key",
+  "column_break_rytl",
   "make_attachments_public",
+  "form_key",
   "tab_2_tab",
   "form_permissions",
   "form_design_permissions",
   "web_publishing_tab",
-  "section_break_kmob",
+  "collect_data_via_public_link_section",
   "enable_web_form",
+  "column_break_qgzs",
   "web_title",
-  "route",
   "public_url",
+  "period_to_collect_data_section",
+  "publish_start_date",
+  "column_break_oqxz",
+  "publish_end_date",
+  "section_break_kmob",
   "form_image",
   "include_logo_in_web_form",
   "show_watermark_image",
-  "publish_start_date",
-  "publish_end_date",
+  "route",
   "column_break_mgpp",
   "anonymous",
   "allow_incomplete_form",
@@ -118,23 +123,24 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:!doc.user_cannot_create && !doc.field_is_table",
    "fieldname": "web_publishing_tab",
    "fieldtype": "Tab Break",
    "label": "Web Publishing"
   },
   {
-   "default": "1",
+   "default": "0",
    "description": "If checked, data will be captured via the web link in addition to the front end mobile application",
    "fieldname": "enable_web_form",
    "fieldtype": "Check",
-   "label": "Enable Capture of Data Via Web Link",
-   "read_only": 1
+   "label": "Enable Capture of Data Via Web Link"
   },
   {
    "fieldname": "column_break_mgpp",
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
    "description": "Title to be displayed on the web form",
    "fieldname": "web_title",
    "fieldtype": "Data",
@@ -147,15 +153,17 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
    "fieldname": "public_url",
    "fieldtype": "Data",
-   "label": "Public URL",
+   "label": "Share This Public Link",
    "read_only": 1
   },
   {
-   "depends_on": "eval:!doc.field_is_table",
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
    "fieldname": "section_break_kmob",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Other Details"
   },
   {
    "fieldname": "success_message",
@@ -197,6 +205,7 @@
    "label": "Show Data Processing Consent Statement"
   },
   {
+   "depends_on": "eval:!doc.user_cannot_create && !doc.field_is_table",
    "fieldname": "qr_code_tab",
    "fieldtype": "Tab Break",
    "label": "QR Code"
@@ -230,7 +239,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Group",
+   "label": "Form Group",
    "options": "Engagement Form Group"
   },
   {
@@ -251,7 +260,7 @@
    "depends_on": "eval: doc.use_field_to_generate_id && !doc.field_is_table",
    "description": "Set this as the value in the Field Name column",
    "fieldname": "naming_field",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Field To Use As ID",
    "mandatory_depends_on": "eval: doc.use_field_to_generate_id"
   },
@@ -290,13 +299,13 @@
    "label": "Make Attachments Public by Default"
   },
   {
-   "description": "Date when to start collection of data",
+   "description": "Date when to start collection of data. Leave blank to ensure continuous data collection",
    "fieldname": "publish_start_date",
    "fieldtype": "Date",
    "label": "Start Date"
   },
   {
-   "description": "Date when to close collection of data",
+   "description": "Date when to close collection of data. Leave blank to ensure continuous data collection",
    "fieldname": "publish_end_date",
    "fieldtype": "Date",
    "label": "End Date"
@@ -307,6 +316,36 @@
    "fieldname": "allow_incomplete_form",
    "fieldtype": "Check",
    "label": "Allow submitting incomplete data"
+  },
+  {
+   "default": "0",
+   "description": "If checked, users cannot create records for this form directly. Only the system can generate records for the form. Use for Engagement Triggers",
+   "fieldname": "user_cannot_create",
+   "fieldtype": "Check",
+   "label": "User Cannot Create"
+  },
+  {
+   "fieldname": "collect_data_via_public_link_section",
+   "fieldtype": "Section Break",
+   "label": "Collect Data Via Public Link"
+  },
+  {
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
+   "fieldname": "period_to_collect_data_section",
+   "fieldtype": "Section Break",
+   "label": "Period To Collect Data"
+  },
+  {
+   "fieldname": "column_break_oqxz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_qgzs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rytl",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
@@ -314,7 +353,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-19 13:33:19.064086",
+ "modified": "2025-11-18 10:38:30.908976",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

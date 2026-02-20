@@ -8,7 +8,7 @@ from participatory_backend.engage_trigger.doctype.engagement_trigger.engagement_
 )
 
 
-def run_triggers(doc: Document, method):
+def run_triggers(doc: Document, method, has_doc_just_been_created_by_trigger=False):
     if not get_doctype_module(doc.doctype) == "Engage":
         return
     if doc.flags.in_notification_update:
@@ -38,7 +38,9 @@ def run_triggers(doc: Document, method):
             _on_value_change(trigger)
 
 
-def evaluate_trigger_condition(doc, trigger: EngagementTrigger):
+def evaluate_trigger_condition(
+    doc, trigger: EngagementTrigger, has_doc_just_been_created_by_trigger=False
+):
     """
     Evaluate trigger condition
     """
@@ -78,7 +80,11 @@ def evaluate_trigger_condition(doc, trigger: EngagementTrigger):
         #         # value is not same as the trigger value
         #         return
 
-    if trigger.activate_trigger_on == "New" and doc._doc_before_save:  # doc.is_new():
+    if (
+        trigger.activate_trigger_on == "New"
+        and doc._doc_before_save
+        and not has_doc_just_been_created_by_trigger
+    ):  # doc.is_new():
         return
 
     if trigger.activate_trigger_on != "Value Change" and not doc.is_new():

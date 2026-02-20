@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2024-04-24 10:28:49.318527",
+ "creation": "2024-05-06 23:47:43.214407",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -101,15 +101,17 @@
    "label": "Print"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-04-26 11:42:05.797980",
+ "modified": "2025-06-19 23:06:58.348944",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Permission",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -2,6 +2,7 @@ import frappe
 from participatory_backend.enums import TechnicalAnalysisTypeEnum
 from frappe import _
 import re
+from frappe.desk.form.load import get_docinfo, getdoc, getdoctype
 
 
 def get_technical_analysis_type(data_type):
@@ -60,3 +61,12 @@ def is_float(value):
         return True
     except ValueError:
         return False
+
+
+def get_child_doctypes(doctype):
+    """
+    Get all doctypes that are contained in a doctype as child forms
+    """
+    getdoctype(doctype)
+    child_docs = frappe.response.docs
+    return [f"{x.name}" for x in child_docs]

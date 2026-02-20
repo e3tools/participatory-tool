@@ -3,6 +3,7 @@ from frappe.core.doctype.user.user import generate_keys
 import datetime
 from frappe.utils import getdate
 from frappe import _
+from frappe.website.doctype.web_form.web_form import WebForm
 
 
 def generate_user_api_keys():
@@ -20,6 +21,7 @@ def unpublish_webforms():
     """
     Loop through engagement forms and unpublish those that have expired timeline
     """
+
     forms = frappe.db.get_all(
         "Engagement Form",
         filters={"field_is_table": 0, "enable_web_form": 1},
@@ -44,11 +46,7 @@ def unpublish_webforms():
             )
             for web_form in web_forms:
                 if web_form.published:
-                    # frappe.db.set_value(
-                    #     "Web Form", web_form.name, "published", False, True
-                    # )
-                    doc = frappe.get_doc("Web Form", web_form.name)
-                    # doc.db_set("published", 0, True, False, True)
+                    doc: WebForm = frappe.get_doc("Web Form", web_form.name)
                     doc.flags.updater_reference = {
                         "doctype": "Engagement Form",
                         "docname": frm.name,

@@ -14,6 +14,9 @@ let UPDATEABLE_TYPES = [
   "Datetime",
   "Select",
   "Percent",
+  "Link",
+  "Linked Field",
+  "Read Only",
 ];
 
 frappe.ui.form.on("Engagement Trigger", {
@@ -25,6 +28,9 @@ frappe.ui.form.on("Engagement Trigger", {
         },
       };
     });
+
+    //hide whatsapp
+    frm.set_df_property("via_whatsapp", "hidden", true);
   },
   refresh(frm) {
     frm.trigger("engagement_form");
@@ -66,13 +72,14 @@ frappe.ui.form.on("Engagement Trigger", {
               UPDATEABLE_TYPES.includes(el.fieldtype)
             ) {
               fields.push({
-                label:
-                  el.fieldname +
-                  " (" +
-                  __(el.label) +
-                  " - " +
-                  el.fieldtype +
-                  ")",
+                // label:
+                //   __(el.label) +
+                //   " - " +
+                //   " (" +
+                //   el.fieldtype +
+                //   ") " +
+                //   el.fieldname,
+                label: make_field_display_value(el),
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
@@ -82,33 +89,36 @@ frappe.ui.form.on("Engagement Trigger", {
               el.options === frm.doc.related_form
             ) {
               link_fields.push({
-                label: el.fieldname + " (" + __(el.label) + ")",
+                label: __(el.label) + " - " + el.fieldname,
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
           });
+          fields.sort((a, b) =>
+            a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
+          );
           frm.fields_dict.set_property_after_trigger_items.grid.update_docfield_property(
             "field_to_update",
             "options",
-            fields
+            fields,
           );
           frm.fields_dict.related_form_field_items.grid.update_docfield_property(
             "current_form_field",
             "options",
-            fields
+            fields,
           );
           frm.set_df_property(
             "field_linking_forms",
             "options",
             link_fields,
-            frm.doc.name
+            frm.doc.name,
           );
           // load all except id field
           frm.set_df_property(
             "change_field",
             "options",
             fields.filter((el) => el.value != "name"),
-            frm.doc.name
+            frm.doc.name,
           );
 
           // frm.trigger("make_recipient_fields");
@@ -134,21 +144,25 @@ frappe.ui.form.on("Engagement Trigger", {
           r.message.forEach((el) => {
             if (!frappe.model.no_value_type.includes(el.fieldtype)) {
               fields.push({
-                label:
-                  el.fieldname +
-                  " (" +
-                  __(el.label) +
-                  " - " +
-                  el.fieldtype +
-                  ")",
+                // label:
+                //   el.fieldname +
+                //   " (" +
+                //   __(el.label) +
+                //   " - " +
+                //   el.fieldtype +
+                //   ")",
+                label: make_field_display_value(el),
                 value: el.fieldname, // + " (" + __(el.label) + ")",
               });
             }
           });
+          fields.sort((a, b) =>
+            a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
+          );
           frm.fields_dict.related_form_field_items.grid.update_docfield_property(
             "related_form_field",
             "options",
-            fields
+            fields,
           );
         }
         frm.trigger("engagement_form"); //reload fields so as to select the linking field
@@ -259,7 +273,7 @@ function make_filters_dialog(frm, /*child,*/ on_add_filter) {
         child.doctype,
         child.name,
         "field_filters",
-        link_filters
+        link_filters,
       );
       frm.dialog.hide();
     },
@@ -303,18 +317,19 @@ function get_select_options(df, parent_field) {
 
   return {
     value: select_value,
-    label: df.fieldname + " (" + __(df.label, null, df.parent) + ")",
+    //label: df.fieldname + " (" + __(df.label, null, df.parent) + ")",
+    label: df.label + " (" + __(df.fieldname, null, df.parent) + ")",
   };
 }
 
 function make_recipient_fields(frm, fields) {
   let receiver_fields = [];
-  if (frm.doc.channel === "Email") {
-    receiver_fields = $.map(fields, function (d) {
+  if (frm.doc.channel === "Email" || frm.doc.via_email) {
+    receiver_fields = $.map(fields || [], function (d) {
       // Add User and Email fields from child into select dropdown
       if (frappe.model.table_fields.includes(d.fieldtype)) {
         let child_fields = frappe.get_doc("DocType", d.options).fields;
-        return $.map(child_fields, function (df) {
+        return $.map(child_fields || [], function (df) {
           return df.options == "Email" ||
             (df.options == "User" && df.fieldtype == "Link")
             ? get_select_options(df, d.fieldname)
@@ -323,14 +338,21 @@ function make_recipient_fields(frm, fields) {
         // Add User and Email fields from parent into select dropdown
       } else {
         return d.options == "Email" ||
+          d.fieldtype == "Read Only" ||
           (d.options == "User" && d.fieldtype == "Link")
           ? get_select_options(d)
           : null;
       }
     });
-  } else if (["WhatsApp", "SMS"].includes(frm.doc.channel)) {
-    receiver_fields = $.map(fields, function (d) {
-      return d.options == "Phone" ? get_select_options(d) : null;
+  } else if (
+    ["WhatsApp", "SMS"].includes(frm.doc.channel) ||
+    frm.doc.via_sms ||
+    frm.doc.via_whatsapp
+  ) {
+    receiver_fields = $.map(fields || [], function (d) {
+      return d.options == "Phone" || d.fieldtype == "Read Only"
+        ? get_select_options(d)
+        : null;
     });
   }
 
@@ -339,7 +361,7 @@ function make_recipient_fields(frm, fields) {
     "receiver_by_document_field",
     "options",
     // [""].concat(["owner"]).concat(receiver_fields)
-    [""].concat(receiver_fields)
+    [""].concat(receiver_fields),
   );
 }
 
@@ -352,6 +374,10 @@ function format_filter_for_python(filter) {
   const field = `doc.${filter[1]}`;
   const operator = filter[2];
   const value = filter[3];
+}
+
+function make_field_display_value(df) {
+  return __(df.label) + " (" + df.fieldname + " - " + df.fieldtype + ")";
 }
 
 // frappe.ui.form.on("Engagement Trigger Update Field Item", {

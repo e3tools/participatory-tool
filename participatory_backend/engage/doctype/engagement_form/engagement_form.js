@@ -10,6 +10,50 @@ const ALLOWED_TITLE_FIELD_TYPES = [
   "Select",
 ];
 
+// frappe.ui.ValidationGroup = class ValidationsDialog extends WidgetDialog {
+//   constructor(opts) {
+//     super(opts);
+//   }
+
+//   get_fields() {
+//     return [
+//       {
+//         fieldtype: "Link",
+//         fieldname: "custom_block_name",
+//         label: "Custom Block Name",
+//         options: "Custom HTML Block",
+//         reqd: 1,
+//         get_query: () => {
+//           return {
+//             query:
+//               "frappe.desk.doctype.custom_html_block.custom_html_block.get_custom_blocks_for_user",
+//           };
+//         },
+//       },
+//     ];
+//   }
+// };
+
+frappe.ui.ValidationGroup = class extends frappe.ui.FilterGroup {
+  constructor(opts) {
+    super(opts);
+    this.hide_fields_column(opts);
+  }
+  hide_fields_column(opts) {
+    let wrapper = opts.parent;
+    let res = wrapper.find(".awesomplete");
+  }
+  add_error_message_column() {}
+  reorder_columns() {}
+  on_change() {}
+};
+
+frappe.ui.Validation = class extends frappe.ui.Filter {
+  constructor(opts) {
+    super(opts);
+  }
+};
+
 frappe.ui.form.on("Engagement Form", {
   setup(frm) {
     frm.set_query("field_child_doctype", "form_fields", function () {
@@ -35,12 +79,12 @@ frappe.ui.form.on("Engagement Form", {
   refresh(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
       // force all forms to have web-form enabled
-      frappe.model.set_value(
-        frm.doc.doctype,
-        frm.doc.name,
-        "enable_web_form",
-        1
-      );
+      // frappe.model.set_value(
+      //   frm.doc.doctype,
+      //   frm.doc.name,
+      //   "enable_web_form",
+      //   1
+      // );
       if (frm.doc.issingle) {
         frm.add_custom_button(__("Go to {0}", [__(frm.doc.name)]), () => {
           window.open(`/app/${frappe.router.slug(frm.doc.name)}`);
@@ -49,15 +93,15 @@ frappe.ui.form.on("Engagement Form", {
         // frm.add_custom_button(__("Go to {0} List", [__(frm.doc.name)]), () => {
         // 	window.open(`/app/${frappe.router.slug(frm.doc.name)}`);
         // });
-
-        frm.add_custom_button(
-          __("New", [__(frm.doc.name)]),
-          () => {
-            window.open(`/app/${frappe.router.slug(frm.doc.name)}/new`);
-          },
-          __("View")
-        );
-
+        if (!frm.doc.user_cannot_create) {
+          frm.add_custom_button(
+            __("New", [__(frm.doc.name)]),
+            () => {
+              window.open(`/app/${frappe.router.slug(frm.doc.name)}/new`);
+            },
+            __("View")
+          );
+        }
         frm.add_custom_button(
           __("List", [__(frm.doc.name)]),
           () => {
@@ -118,11 +162,12 @@ frappe.ui.form.on("Engagement Form", {
   },
   onload_post_render(frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
     frm.events.show_qrcode(frm);
   },
   enable_web_form(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
-      if (frm.doc.enable_web_form) {
+      if (frm.doc.enable_web_form && !frm.doc.user_cannot_create) {
         frm.add_custom_button(
           __("Public View", [__(frm.doc.name)]),
           () => {
@@ -134,13 +179,15 @@ frappe.ui.form.on("Engagement Form", {
         frm.remove_custom_button(__("Public View"), __("Actions"));
       }
 
-      frm.add_custom_button(
-        __("Create engagement", [__(frm.doc.name)]),
-        () => {
-          frm.events.make_engagement(frm);
-        },
-        __("Actions")
-      );
+      if (!frm.doc.user_cannot_create) {
+        frm.add_custom_button(
+          __("Create engagement", [__(frm.doc.name)]),
+          () => {
+            frm.events.make_engagement(frm);
+          },
+          __("Actions")
+        );
+      }
     }
   },
   set_public_url(frm) {
@@ -151,9 +198,11 @@ frappe.ui.form.on("Engagement Form", {
   validate: function (frm) {},
   form_fields_add: function (frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
   },
   form_fields_remove: function (frm) {
     set_title_field_options(frm);
+    set_name_field_options(frm);
   },
   // show_title_field_in_link(frm) {
   // 	set_title_field_options(frm);
@@ -192,11 +241,15 @@ frappe.ui.form.on("Engagement Form Field", {
   form_render: function (frm, cdt, cdn) {
     frm.trigger("field_type", cdt, cdn);
     const fld = frm.cur_grid.get_field("set_depends_on");
-    if (fld) {
+    if (fld && fld.$input) {
       fld.$input.addClass("btn btn-link");
     }
+    if (!frm.doc.__islocal) {
+      frm.trigger("setup_skip_conditions", cdt, cdn);
+      frm.trigger("setup_validations", cdt, cdn);
+      frm.trigger("setup_link_field_filters", cdt, cdn);
+    }
     // frm.trigger("make_additional_child_table_fields", cdt, cdn);
-
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -225,6 +278,7 @@ frappe.ui.form.on("Engagement Form Field", {
       );
       frm.trigger("linked_form", cdt, cdn);
     }
+    frm.trigger("layout_fields", cdt, cdn);
   },
   linked_form: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -268,6 +322,44 @@ frappe.ui.form.on("Engagement Form Field", {
       child.linked_form_property
     );
     frm.trigger("set_linked_field_value", cdt, cdn);
+  },
+  layout_fields: function (frm, cdt, cdn) {
+    const props = [
+      ["field_reqd", false],
+      ["field_readonly", false],
+      ["field_hidden", false],
+      ["field_is_backend_field", false],
+      ["field_default", ""],
+      ["field_in_list_view", false],
+      ["field_is_search_field", false],
+      //["set_mandatory_depends_on", null],
+      //["mandatory_depends_on_plain", ""], //set to null to avoid overriding incase user selected another field type
+      //["mandatory_depends_on", ""], //set to null to avoid overriding incase user selected another field type
+      //["set_read_only_depends_on", null], //set to null to avoid overriding incase user selected another field type
+      //["read_only_depends_on_plain", null], //set to null to avoid overriding incase user selected another field type
+      //["read_only_depends_on", ""],
+      ["description", ""],
+      ["max_height", ""],
+    ];
+    var child = locals[cdt][cdn];
+    var is_layout_field = in_list(
+      ["Section Break", "Column Break"],
+      child.field_type
+    );
+    props.forEach((el) => {
+      frm.set_df_property(
+        "form_fields",
+        "hidden",
+        is_layout_field,
+        frm.doc.name,
+        el[0],
+        cdn
+      );
+
+      // if (el[1] !== null) {
+      //   frappe.model.set_value(cdt, cdn, el[0], el[1]);
+      // }
+    });
   },
   set_linked_field_value: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
@@ -352,8 +444,6 @@ frappe.ui.form.on("Engagement Form Field", {
     let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
 
     if (!dialog) return;
-
-    debugger;
 
     let wrapper = dialog.fields_dict.additional_linked_table_fields.wrapper;
     wrapper.replaceChildren();
@@ -446,7 +536,173 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.dirty();
     });
   },
+  setup_skip_conditions: function (frm, cdt, cdn) {
+    set_skip_logic_conditions(frm, cdt, cdn);
+  },
+
+  setup_link_field_filters: function (frm, cdt, cdn) {
+    set_link_field_filters(frm, cdt, cdn);
+  },
+  setup_validations: function (frm, cdt, cdn) {
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    if (!dialog) return;
+    let child = locals[cdt][cdn];
+    let filter_group = new engage.ui.ValidationGroup({
+      parent: dialog.fields_dict["validations_area"].$wrapper, // this.dialog.get_field("display_filter_area").$wrapper,
+      doctype: frm.doc.name, // frm.doc.doctype, // frm.doc.name,
+      fieldname: child.field_name,
+      on_change: () => {
+        let filters = filter_group.get_filters();
+        // each filter returns an list of arrays where each 6th item in the array says if the field is hidden or not.
+        // We need to remove the value of hidden property as they are not important in the backend context
+        filters = (filters || []).map((el) => {
+          return el.length == 5 ? el.slice(0, 5) : el;
+        });
+        frappe.model.set_value(
+          cdt,
+          cdn,
+          "validations",
+          JSON.stringify(filters)
+        );
+        console.log("Validations: ", filters);
+      },
+      field_to_validate: child.field_name,
+    });
+
+    if (frm.doc.form_name) {
+      frappe.model.with_doctype(frm.doc.form_name, () => {
+        const existing_filters = generate_filter_from_json(
+          frm,
+          cdt,
+          cdn,
+          "validations"
+        ); // child[filters_field_name];
+        if (existing_filters) {
+          // let filters = JSON.parse(existing_filters);
+          if (existing_filters /*filters*/) {
+            filter_group.add_filters_to_filter_group(
+              existing_filters /*filters*/
+            );
+          }
+        }
+      });
+    }
+  },
 });
+
+function set_skip_logic_conditions(frm, cdt, cdn) {
+  function _set_conditions(filters_field_name, filters_loading_field_name) {
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    if (!dialog) return;
+
+    let filter_group = new frappe.ui.FilterGroup({
+      parent: dialog.fields_dict[filters_loading_field_name].$wrapper, // this.dialog.get_field("display_filter_area").$wrapper,
+      doctype: frm.doc.name, // frm.doc.doctype, // frm.doc.name,
+      on_change: () => {
+        let filters = filter_group.get_filters();
+        // each filter returns an list of arrays where each 5th item in the array says if the field is hidden or not.
+        // We need to remove the value of hidden property as they are not important in the backend context
+        filters = (filters || []).map((el) => {
+          return el.length == 5 ? el.slice(0, 4) : el;
+        });
+        frappe.model.set_value(
+          cdt,
+          cdn,
+          filters_field_name,
+          JSON.stringify(filters)
+        );
+        console.log("Filters: ", filters);
+      },
+    });
+    let child = locals[cdt][cdn];
+    const existing_filters = generate_filter_from_json(
+      frm,
+      cdt,
+      cdn,
+      filters_field_name
+    ); // child[filters_field_name];
+    if (existing_filters) {
+      // let filters = JSON.parse(existing_filters);
+      if (existing_filters /*filters*/) {
+        filter_group.add_filters_to_filter_group(existing_filters /*filters*/);
+      }
+    }
+  }
+
+  if (frm.doc.form_name) {
+    // _create_filter_area();
+    frappe.model.with_doctype(frm.doc.form_name, () => {
+      _set_conditions("depends_on_plain", "display_field_filters_loading");
+      _set_conditions(
+        "mandatory_depends_on_plain",
+        "mandatory_field_filters_loading"
+      );
+      _set_conditions(
+        "read_only_depends_on_plain",
+        "readonly_field_filters_loading"
+      );
+    });
+  }
+}
+
+function set_link_field_filters(frm, cdt, cdn) {
+  let child = locals[cdt][cdn];
+
+  function _set_filters(filters_field_name, filters_loading_field_name) {
+    let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    if (!dialog) return;
+
+    let filter_group = new frappe.ui.FilterGroup({
+      parent: dialog.fields_dict[filters_loading_field_name].$wrapper, // this.dialog.get_field("display_filter_area").$wrapper,
+      doctype: child.field_doctype, // use the doctype of the link field
+      on_change: () => {
+        let filters = filter_group.get_filters();
+        // each filter returns an list of arrays where each 5th item in the array says if the field is hidden or not.
+        // We need to remove the value of hidden property as they are not important in the backend context
+        filters = (filters || []).map((el) => {
+          return el.length == 5 ? el.slice(0, 4) : el;
+        });
+        frappe.model.set_value(
+          cdt,
+          cdn,
+          filters_field_name,
+          JSON.stringify(filters)
+        );
+        console.log("Link Filters: ", filters);
+      },
+    });
+    const existing_filters = generate_filter_from_json(
+      frm,
+      cdt,
+      cdn,
+      filters_field_name
+    ); // child[filters_field_name];
+    if (existing_filters) {
+      // let filters = JSON.parse(existing_filters);
+      if (existing_filters /*filters*/) {
+        filter_group.add_filters_to_filter_group(existing_filters /*filters*/);
+      }
+    }
+  }
+
+  if (child.field_doctype) {
+    frappe.model.with_doctype(child.field_doctype, () => {
+      _set_filters("field_filters_plain", "link_filters_area");
+    });
+  }
+}
+
+function generate_filter_from_json(frm, cdt, cdn, filters_field_name) {
+  let filters = [];
+  if (!frm.doc.__islocal && frm.doc.form_name && frm.doc.form_fields) {
+    let child = locals[cdt][cdn];
+    filters = frappe.utils.get_filter_from_json(
+      child[filters_field_name],
+      frm.doc.doctype //frm.doc.form_name
+    );
+  }
+  return filters;
+}
 
 function edit_filters(frm, doctype, existing_filters, on_add_filter) {
   let field_doctype = doctype;
@@ -454,17 +710,20 @@ function edit_filters(frm, doctype, existing_filters, on_add_filter) {
   make_filters_dialog(frm, on_add_filter);
 
   make_filters_area(frm, field_doctype);
-  frappe.model.with_doctype(field_doctype, () => {
-    frm.dialog.show();
-    //  add_existing_filter(frm, child);
 
-    if (existing_filters) {
-      let filters = JSON.parse(existing_filters);
-      if (filters) {
-        frm.filter_group.add_filters_to_filter_group(filters);
+  if (field_doctype) {
+    frappe.model.with_doctype(field_doctype, () => {
+      frm.dialog.show();
+      //  add_existing_filter(frm, child);
+
+      if (existing_filters) {
+        let filters = JSON.parse(existing_filters);
+        if (filters) {
+          frm.filter_group.add_filters_to_filter_group(filters);
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 function edit_filters_link(frm, child) {
@@ -472,10 +731,13 @@ function edit_filters_link(frm, child) {
   //   const { frm } = store;
   make_filters_dialog(frm, child);
   make_filters_area(frm, field_doctype);
-  frappe.model.with_doctype(field_doctype, () => {
-    frm.dialog.show();
-    add_existing_filter(frm, child);
-  });
+
+  if (field_doctype) {
+    frappe.model.with_doctype(field_doctype, () => {
+      frm.dialog.show();
+      add_existing_filter(frm, child);
+    });
+  }
 }
 
 const set_title_field_options = function (frm) {
@@ -494,11 +756,42 @@ const set_title_field_options = function (frm) {
       label_val = field.field_label;
     }
   });
+  fields.sort((a, b) =>
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+  );
   frm.set_df_property("title_field", "options", fields, frm.doc.name);
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "title_field",
+    label_val
+  );
+};
+
+const set_name_field_options = function (frm) {
+  const val = frm.doc.naming_field;
+  let label_val = "";
+  let fields = [];
+  frm.doc.form_fields?.forEach((field) => {
+    if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
+      fields.push({
+        label: field.field_label,
+        value: field.field_label,
+        selected: field.field_name === val,
+      });
+    }
+    if (field.field_name === val) {
+      label_val = field.field_label;
+    }
+  });
+  fields.sort((a, b) =>
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+  );
+  frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+  frappe.model.set_value(
+    frm.doc.doctype,
+    frm.doc.name,
+    "naming_field",
     label_val
   );
 };
