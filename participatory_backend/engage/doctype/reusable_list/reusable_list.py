@@ -22,10 +22,11 @@ class ReusableList(Document):
             ReusableListItem,
         )
 
-        default_sort_order: DF.Literal["ASC", "DESC"]
         description: DF.Data | None
         items: DF.Table[ReusableListItem]
         list_name: DF.Data
+        sort_field: DF.Literal["Item Name", "List Sequence"]
+        sort_order: DF.Literal["ASC", "DESC"]
 
     # end: auto-generated types
     def autoname(self):
