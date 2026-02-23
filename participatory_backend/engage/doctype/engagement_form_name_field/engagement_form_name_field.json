@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-23 19:22:50.175774",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "input_type",
+  "form_field",
+  "custom_text",
+  "separator"
+ ],
+ "fields": [
+  {
+   "depends_on": "eval:doc.input_type == \"Form Field\"",
+   "fieldname": "form_field",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Form Field",
+   "mandatory_depends_on": "eval:doc.input_type == \"Form Field\"",
+   "read_only_depends_on": "eval:doc.input_type != \"Form Field\""
+  },
+  {
+   "fieldname": "separator",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Separator"
+  },
+  {
+   "fieldname": "input_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Input Type",
+   "options": "Form Field\nDay\nWeek\nMonth\nShort Year\nFull Year\nNumeric Series\nCustom Text"
+  },
+  {
+   "depends_on": "eval:doc.input_type == \"Custom Text\"",
+   "fieldname": "custom_text",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Custom Text",
+   "mandatory_depends_on": "eval:doc.input_type == \"Custom Text\"",
+   "read_only_depends_on": "eval:doc.input_type != \"Custom Text\""
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-23 21:03:57.178283",
+ "modified_by": "Administrator",
+ "module": "Engage",
+ "name": "Engagement Form Name Field",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
