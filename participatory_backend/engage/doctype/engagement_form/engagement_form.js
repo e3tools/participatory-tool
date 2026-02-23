@@ -99,7 +99,7 @@ frappe.ui.form.on("Engagement Form", {
             () => {
               window.open(`/app/${frappe.router.slug(frm.doc.name)}/new`);
             },
-            __("View")
+            __("View"),
           );
         }
         frm.add_custom_button(
@@ -107,17 +107,17 @@ frappe.ui.form.on("Engagement Form", {
           () => {
             window.open(`/app/${frappe.router.slug(frm.doc.name)}`);
           },
-          __("View")
+          __("View"),
         );
 
         frm.add_custom_button(
           __("Dashboard"),
           () => {
             window.open(
-              `/app/${frappe.router.slug(frm.doc.name)}/view/dashboard`
+              `/app/${frappe.router.slug(frm.doc.name)}/view/dashboard`,
             );
           },
-          __("View")
+          __("View"),
         );
 
         frm.add_custom_button(
@@ -125,7 +125,7 @@ frappe.ui.form.on("Engagement Form", {
           () => {
             window.open(`/app/${frappe.router.slug(frm.doc.name)}/view/report`);
           },
-          __("View")
+          __("View"),
         );
       }
     }
@@ -156,13 +156,14 @@ frappe.ui.form.on("Engagement Form", {
             ["parent", "=", parent],
           ],
         };
-      }
+      },
     );
     frm.events.show_qrcode(frm);
   },
   onload_post_render(frm) {
     set_title_field_options(frm);
     set_name_field_options(frm);
+    set_name_fields_in_grid(frm);
     frm.events.show_qrcode(frm);
   },
   enable_web_form(frm) {
@@ -173,7 +174,7 @@ frappe.ui.form.on("Engagement Form", {
           () => {
             window.open(`/${frappe.router.slug(frm.doc.route)}/new`);
           },
-          __("Actions")
+          __("Actions"),
         );
       } else {
         frm.remove_custom_button(__("Public View"), __("Actions"));
@@ -185,7 +186,7 @@ frappe.ui.form.on("Engagement Form", {
           () => {
             frm.events.make_engagement(frm);
           },
-          __("Actions")
+          __("Actions"),
         );
       }
     }
@@ -199,10 +200,12 @@ frappe.ui.form.on("Engagement Form", {
   form_fields_add: function (frm) {
     set_title_field_options(frm);
     set_name_field_options(frm);
+    set_name_fields_in_grid(frm);
   },
   form_fields_remove: function (frm) {
     set_title_field_options(frm);
     set_name_field_options(frm);
+    set_name_fields_in_grid(frm);
   },
   // show_title_field_in_link(frm) {
   // 	set_title_field_options(frm);
@@ -231,7 +234,7 @@ frappe.ui.form.on("Engagement Form", {
     frm.set_df_property(
       "qr_code_preview",
       "options",
-      frappe.render_template(template)
+      frappe.render_template(template),
     );
     frm.refresh_field("qr_code_preview");
   },
@@ -249,7 +252,7 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.trigger("setup_validations", cdt, cdn);
       frm.trigger("setup_link_field_filters", cdt, cdn);
     }
-    // frm.trigger("make_additional_child_table_fields", cdt, cdn);
+    frm.trigger("make_additional_child_table_fields", cdt, cdn);
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
@@ -274,7 +277,7 @@ frappe.ui.form.on("Engagement Form Field", {
         link_fields,
         frm.doc.name,
         "linked_form",
-        cdn
+        cdn,
       );
       frm.trigger("linked_form", cdt, cdn);
     }
@@ -304,7 +307,7 @@ frappe.ui.form.on("Engagement Form Field", {
               fields,
               frm.doc.name,
               "linked_form_property",
-              cdn
+              cdn,
             );
 
             frm.trigger("set_linked_field_value", cdt, cdn);
@@ -319,7 +322,7 @@ frappe.ui.form.on("Engagement Form Field", {
       cdt,
       cdn,
       "linked_form_property",
-      child.linked_form_property
+      child.linked_form_property,
     );
     frm.trigger("set_linked_field_value", cdt, cdn);
   },
@@ -344,7 +347,7 @@ frappe.ui.form.on("Engagement Form Field", {
     var child = locals[cdt][cdn];
     var is_layout_field = in_list(
       ["Section Break", "Column Break"],
-      child.field_type
+      child.field_type,
     );
     props.forEach((el) => {
       frm.set_df_property(
@@ -353,7 +356,7 @@ frappe.ui.form.on("Engagement Form Field", {
         is_layout_field,
         frm.doc.name,
         el[0],
-        cdn
+        cdn,
       );
 
       // if (el[1] !== null) {
@@ -385,9 +388,9 @@ frappe.ui.form.on("Engagement Form Field", {
           child.doctype,
           child.name,
           "field_filters_plain",
-          filters
+          filters,
         );
-      }
+      },
     );
   },
   set_depends_on: function (frm, cdt, cdn) {
@@ -401,9 +404,9 @@ frappe.ui.form.on("Engagement Form Field", {
           child.doctype,
           child.name,
           "depends_on_plain",
-          filters
+          filters,
         );
-      }
+      },
     );
   },
   set_mandatory_depends_on: function (frm, cdt, cdn) {
@@ -417,9 +420,9 @@ frappe.ui.form.on("Engagement Form Field", {
           child.doctype,
           child.name,
           "mandatory_depends_on_plain",
-          filters
+          filters,
         );
-      }
+      },
     );
   },
   set_read_only_depends_on: function (frm, cdt, cdn) {
@@ -433,9 +436,9 @@ frappe.ui.form.on("Engagement Form Field", {
           child.doctype,
           child.name,
           "read_only_depends_on_plain",
-          filters
+          filters,
         );
-      }
+      },
     );
   },
   make_additional_child_table_fields: function (frm, cdt, cdn) {
@@ -531,7 +534,7 @@ frappe.ui.form.on("Engagement Form Field", {
     // Update the JSON field whenever the table changes
     field_group.fields_dict.grandchild_table.grid.wrapper.on("change", () => {
       child_row.additional_linked_table_fields = JSON.stringify(
-        field_group.get_value("grandchild_table")
+        field_group.get_value("grandchild_table"),
       );
       frm.dirty();
     });
@@ -562,7 +565,7 @@ frappe.ui.form.on("Engagement Form Field", {
           cdt,
           cdn,
           "validations",
-          JSON.stringify(filters)
+          JSON.stringify(filters),
         );
         console.log("Validations: ", filters);
       },
@@ -575,13 +578,13 @@ frappe.ui.form.on("Engagement Form Field", {
           frm,
           cdt,
           cdn,
-          "validations"
+          "validations",
         ); // child[filters_field_name];
         if (existing_filters) {
           // let filters = JSON.parse(existing_filters);
           if (existing_filters /*filters*/) {
             filter_group.add_filters_to_filter_group(
-              existing_filters /*filters*/
+              existing_filters /*filters*/,
             );
           }
         }
@@ -609,7 +612,7 @@ function set_skip_logic_conditions(frm, cdt, cdn) {
           cdt,
           cdn,
           filters_field_name,
-          JSON.stringify(filters)
+          JSON.stringify(filters),
         );
         console.log("Filters: ", filters);
       },
@@ -619,7 +622,7 @@ function set_skip_logic_conditions(frm, cdt, cdn) {
       frm,
       cdt,
       cdn,
-      filters_field_name
+      filters_field_name,
     ); // child[filters_field_name];
     if (existing_filters) {
       // let filters = JSON.parse(existing_filters);
@@ -635,11 +638,11 @@ function set_skip_logic_conditions(frm, cdt, cdn) {
       _set_conditions("depends_on_plain", "display_field_filters_loading");
       _set_conditions(
         "mandatory_depends_on_plain",
-        "mandatory_field_filters_loading"
+        "mandatory_field_filters_loading",
       );
       _set_conditions(
         "read_only_depends_on_plain",
-        "readonly_field_filters_loading"
+        "readonly_field_filters_loading",
       );
     });
   }
@@ -666,7 +669,7 @@ function set_link_field_filters(frm, cdt, cdn) {
           cdt,
           cdn,
           filters_field_name,
-          JSON.stringify(filters)
+          JSON.stringify(filters),
         );
         console.log("Link Filters: ", filters);
       },
@@ -675,7 +678,7 @@ function set_link_field_filters(frm, cdt, cdn) {
       frm,
       cdt,
       cdn,
-      filters_field_name
+      filters_field_name,
     ); // child[filters_field_name];
     if (existing_filters) {
       // let filters = JSON.parse(existing_filters);
@@ -698,7 +701,7 @@ function generate_filter_from_json(frm, cdt, cdn, filters_field_name) {
     let child = locals[cdt][cdn];
     filters = frappe.utils.get_filter_from_json(
       child[filters_field_name],
-      frm.doc.doctype //frm.doc.form_name
+      frm.doc.doctype, //frm.doc.form_name
     );
   }
   return filters;
@@ -757,14 +760,14 @@ const set_title_field_options = function (frm) {
     }
   });
   fields.sort((a, b) =>
-    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
   frm.set_df_property("title_field", "options", fields, frm.doc.name);
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "title_field",
-    label_val
+    label_val,
   );
 };
 
@@ -785,14 +788,107 @@ const set_name_field_options = function (frm) {
     }
   });
   fields.sort((a, b) =>
-    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "naming_field",
-    label_val
+    label_val,
+  );
+};
+
+const set_name_fields_in_grid = function (frm) {
+  frappe.call({
+    method:
+      "participatory_backend.engage.doctype.engagement_form.engagement_form.get_docfields",
+    args: {
+      doctype: frm.doc.name,
+    },
+    freeze: true,
+    callback: function (r) {
+      // initialize an empty array
+      let fields = [];
+      let link_fields = [];
+      if (r.message) {
+        r.message.forEach((el) => {
+          if (
+            !frappe.model.no_value_type.includes(el.fieldtype)
+            /*&&
+            UPDATEABLE_TYPES.includes(el.fieldtype)*/
+          ) {
+            fields.push({
+              label: make_field_display_value(el),
+              value: el.fieldname, // + " (" + __(el.label) + ")",
+            });
+          }
+          // Get a Link form that has the Engagement Form as options
+          if (el.fieldtype === "Link" && el.options === frm.doc.related_form) {
+            link_fields.push({
+              label: __(el.label) + " - " + el.fieldname,
+              value: el.fieldname, // + " (" + __(el.label) + ")",
+            });
+          }
+        });
+        fields.sort((a, b) =>
+          a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
+        );
+        frm.fields_dict.naming_fields_grid.grid.update_docfield_property(
+          "form_field",
+          "options",
+          fields,
+        );
+        /*
+          frm.fields_dict.related_form_field_items.grid.update_docfield_property(
+            "current_form_field",
+            "options",
+            fields,
+          );
+          frm.set_df_property(
+            "field_linking_forms",
+            "options",
+            link_fields,
+            frm.doc.name,
+          );
+          // load all except id field
+          frm.set_df_property(
+            "change_field",
+            "options",
+            fields.filter((el) => el.value != "name"),
+            frm.doc.name,
+          );
+
+          // frm.trigger("make_recipient_fields");
+          make_recipient_fields(frm, r.message); // fields);*/
+      }
+    },
+  });
+
+  const val = frm.doc.naming_field;
+  let label_val = "";
+  let fields = [];
+  frm.doc.form_fields?.forEach((field) => {
+    if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
+      fields.push({
+        label: field.field_label,
+        value: field.field_label,
+        selected: field.field_name === val,
+      });
+    }
+    if (field.field_name === val) {
+      label_val = field.field_label;
+    }
+  });
+  fields.sort((a, b) =>
+    a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
+  );
+  frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+  frappe.model.set_value(
+    frm.doc.doctype,
+    frm.doc.name,
+    "naming_field",
+    label_val,
   );
 };
 
@@ -858,7 +954,7 @@ function make_filters_dialog(frm, /*child,*/ on_add_filter) {
         child.doctype,
         child.name,
         "field_filters",
-        link_filters
+        link_filters,
       );
       frm.dialog.hide();
     },
@@ -993,3 +1089,8 @@ const construct_js_expression = (condition) => {
   }
   return exp;
 };
+
+function make_field_display_value(df) {
+  // return __(df.label) + " (" + df.fieldname + " - " + df.fieldtype + ")";
+  return __(df.label) + " - " + df.fieldtype;
+}
