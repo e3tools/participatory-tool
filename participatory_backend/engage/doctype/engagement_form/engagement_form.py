@@ -93,6 +93,9 @@ class EngagementForm(Document):
         from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
             EngagementFormField,
         )
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
+            EngagementFormNameField,
+        )
         from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
             EngagementFormPermission,
         )
@@ -114,8 +117,11 @@ class EngagementForm(Document):
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
         naming_field: DF.Literal[None]
+        naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
-        naming_rule: DF.Literal["", "By Fieldname", "Autoname", "Expression", "Random"]
+        naming_rule: DF.Literal[
+            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
+        ]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
@@ -460,6 +466,30 @@ class EngagementForm(Document):
         Get naming rule
         Return of the form SDD.-.YYYY.-.#####
         """
+
+        def _make_name_from_naming_fields():
+            special_fld_map = {
+                "Day": "DD",
+                "Week": "WW",
+                "Month": "MM",
+                "Short Year": "YY",
+                "Full Year": "YYYY",
+                "Numeric Series": "#####",
+            }
+            format = ""
+            for i, fld in enumerate(self.naming_fields_grid):
+                if fld.input_type == "Form Field":
+                    format += "{" + f"{fld.form_field}" + "}"
+                elif fld.input_type in special_fld_map.keys():
+                    format += "{" + f"{special_fld_map[fld.input_type]}" + "}"
+                elif fld.input_type == "Custom Text":
+                    format += fld.custom_text
+                # if it is the last record, do not append the separator
+                if fld.separator and i != len(self.naming_fields_grid):
+                    format += fld.separator
+
+            return format
+
         if cint(self.field_is_table):
             return None  # if child table, no setting naming rule
         if self.naming_rule == "By Fieldname":  # cint(self.use_field_to_generate_id):
@@ -471,6 +501,10 @@ class EngagementForm(Document):
         if self.naming_rule == "Random":
             self.naming_format = "hash"
             return "hash"
+        if self.naming_rule == "Custom":
+            expr = _make_name_from_naming_fields()
+            self.naming_format = f"format:{expr}"
+            return f"format:{expr}"
         if self.naming_rule == "Autoname":
             initials = get_initials(self.form_name)
             prefix = (

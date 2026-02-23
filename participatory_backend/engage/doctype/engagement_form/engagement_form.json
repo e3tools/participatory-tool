@@ -16,6 +16,7 @@
   "record_id_prefix",
   "use_field_to_generate_id",
   "naming_field",
+  "naming_fields_grid",
   "column_break_ygly",
   "user_cannot_create",
   "description",
@@ -356,7 +357,7 @@
    "fieldname": "naming_rule",
    "fieldtype": "Select",
    "label": "Naming Rule",
-   "options": "\nBy Fieldname\nAutoname\nExpression\nRandom"
+   "options": "\nBy Fieldname\nAutoname\nExpression\nRandom\nCustom"
   },
   {
    "depends_on": "eval: (doc.naming_rule == \"Expression\") && !doc.field_is_table",
@@ -368,9 +369,18 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.naming_format",
    "fieldname": "naming_format_section",
    "fieldtype": "Section Break",
    "label": "Naming Format"
+  },
+  {
+   "depends_on": "eval:doc.naming_rule == \"Custom\"",
+   "fieldname": "naming_fields_grid",
+   "fieldtype": "Table",
+   "label": "Fields To Use To Generate Record ID (Sequence Of The Fields Matters)",
+   "mandatory_depends_on": "eval:doc.naming_rule == \"Custom\"",
+   "options": "Engagement Form Name Field"
   }
  ],
  "grid_page_length": 50,
@@ -378,7 +388,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-20 20:39:21.774280",
+ "modified": "2026-02-23 21:14:48.207095",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
