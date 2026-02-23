@@ -93,6 +93,9 @@ class EngagementForm(Document):
         from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
             EngagementFormField,
         )
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
+            EngagementFormNameField,
+        )
         from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
             EngagementFormPermission,
         )
@@ -101,6 +104,7 @@ class EngagementForm(Document):
         anonymous: DF.Check
         description: DF.TextEditor | None
         enable_web_form: DF.Check
+        expression: DF.Data | None
         field_is_table: DF.Check
         form_design_permissions: DF.Table[EngagementFormPermission]
         form_fields: DF.Table[EngagementFormField]
@@ -113,7 +117,11 @@ class EngagementForm(Document):
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
         naming_field: DF.Literal[None]
+        naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
+        naming_rule: DF.Literal[
+            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
+        ]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
@@ -184,7 +192,7 @@ class EngagementForm(Document):
         """
         Validate that the field used as naming field is mandatory
         """
-        if self.use_field_to_generate_id:
+        if self.naming_rule == "By Fieldname":  # self.use_field_to_generate_id:
             # on the frontend, we are only setting labels since we may not have the field_names generated on the frontend yet
             fld = [x for x in self.form_fields if x.field_label == self.naming_field]
             if fld:
@@ -458,27 +466,65 @@ class EngagementForm(Document):
         Get naming rule
         Return of the form SDD.-.YYYY.-.#####
         """
+
+        def _make_name_from_naming_fields():
+            special_fld_map = {
+                "Day": "DD",
+                "Week": "WW",
+                "Month": "MM",
+                "Short Year": "YY",
+                "Full Year": "YYYY",
+                "Numeric Series": "#####",
+            }
+            format = ""
+            for i, fld in enumerate(self.naming_fields_grid):
+                if fld.input_type == "Form Field":
+                    format += "{" + f"{fld.form_field}" + "}"
+                elif fld.input_type in special_fld_map.keys():
+                    format += "{" + f"{special_fld_map[fld.input_type]}" + "}"
+                elif fld.input_type == "Custom Text":
+                    format += fld.custom_text
+                # if it is the last record, do not append the separator
+                if fld.separator and i != len(self.naming_fields_grid):
+                    format += fld.separator
+
+            return format
+
         if cint(self.field_is_table):
             return None  # if child table, no setting naming rule
-        if cint(self.use_field_to_generate_id):
+        if self.naming_rule == "By Fieldname":  # cint(self.use_field_to_generate_id):
+            self.naming_format = f"field:{self.naming_field}"
             return f"field:{self.naming_field}"
-        initials = get_initials(self.form_name)
-        prefix = str(self.record_id_prefix).strip() if self.record_id_prefix else None
-        # res = "format:{0}-{1}-{2}".format(prefix, "{YYYY}", "{#####}")
-        # res = "{3}.-.{0}.-.{1}.-.{2}".format(prefix, "YYYY", "#####", initials)
-        if prefix:
-            res = "{0}.-.{1}.-.{2}".format(prefix, "YYYY", "#####")
-        else:
-            res = "{0}.-.{1}.-.{2}".format(initials, "YYYY", "#####")
-        format = res.replace(" ", "").replace("--", "-")
-        self.naming_format = "{0} e.g {1}".format(
-            format,
-            format.replace("format:", "")
-            .replace("YYYY", str(datetime.date.today().year))
-            .replace("#####", "00001")
-            .replace(".", ""),
-        )
-        return format
+        if self.naming_rule == "Expression":
+            self.naming_format = f"format:{self.expression}"
+            return f"format:{self.expression}"
+        if self.naming_rule == "Random":
+            self.naming_format = "hash"
+            return "hash"
+        if self.naming_rule == "Custom":
+            expr = _make_name_from_naming_fields()
+            self.naming_format = f"format:{expr}"
+            return f"format:{expr}"
+        if self.naming_rule == "Autoname":
+            initials = get_initials(self.form_name)
+            prefix = (
+                str(self.record_id_prefix).strip() if self.record_id_prefix else None
+            )
+            # res = "format:{0}-{1}-{2}".format(prefix, "{YYYY}", "{#####}")
+            # res = "{3}.-.{0}.-.{1}.-.{2}".format(prefix, "YYYY", "#####", initials)
+            if prefix:
+                res = "{0}.-.{1}.-.{2}".format(prefix, "YYYY", "#####")
+            else:
+                res = "{0}.-.{1}.-.{2}".format(initials, "YYYY", "#####")
+            format = res.replace(" ", "").replace("--", "-")
+            self.naming_format = "{0} e.g {1}".format(
+                format,
+                format.replace("format:", "")
+                .replace("YYYY", str(datetime.date.today().year))
+                .replace("#####", "00001")
+                .replace(".", ""),
+            )
+            return format
 
     def make_doctype(self):
         fields = []
@@ -522,7 +568,7 @@ class EngagementForm(Document):
         # 	self.naming_format = ""
 
         doc.allow_rename = 0
-        if cint(self.use_field_to_generate_id):
+        if self.naming_rule == "By Fieldname":  # cint(self.use_field_to_generate_id):
             doc.naming_rule = "By fieldname"
             doc.allow_rename = 1
             doc.autoname = self._get_naming_rule()

@@ -11,14 +11,18 @@
   "form_name",
   "form_group",
   "field_is_table",
-  "use_field_to_generate_id",
+  "naming_rule",
+  "expression",
   "record_id_prefix",
-  "naming_format",
+  "use_field_to_generate_id",
   "naming_field",
+  "naming_fields_grid",
   "column_break_ygly",
   "user_cannot_create",
   "description",
   "show_data_processing_consent_statement",
+  "naming_format_section",
+  "naming_format",
   "section_break_wjep",
   "form_fields",
   "settings_tab",
@@ -98,7 +102,8 @@
   },
   {
    "fieldname": "section_break_wjep",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Form Fields"
   },
   {
    "default": "0",
@@ -109,7 +114,7 @@
    "label": "Is Child Table"
   },
   {
-   "depends_on": "eval: !doc.use_field_to_generate_id && !doc.field_is_table",
+   "depends_on": "eval: (!doc.use_field_to_generate_id && doc.naming_rule==\"Autoname\") && !doc.field_is_table",
    "description": "Records created will be prefixed by this value",
    "fieldname": "record_id_prefix",
    "fieldtype": "Data",
@@ -251,18 +256,17 @@
   },
   {
    "default": "0",
-   "depends_on": "eval:!doc.field_is_table",
    "fieldname": "use_field_to_generate_id",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Use a Form Field To Generate ID"
   },
   {
-   "depends_on": "eval: doc.use_field_to_generate_id && !doc.field_is_table",
-   "description": "Set this as the value in the Field Name column",
+   "depends_on": "eval: (doc.use_field_to_generate_id || doc.naming_rule == \"By Fieldname\") && !doc.field_is_table",
    "fieldname": "naming_field",
    "fieldtype": "Select",
    "label": "Field To Use As ID",
-   "mandatory_depends_on": "eval: doc.use_field_to_generate_id"
+   "mandatory_depends_on": "eval: (doc.use_field_to_generate_id || doc.naming_rule == \"By Fieldname\") && !doc.field_is_table"
   },
   {
    "default": "0",
@@ -346,6 +350,37 @@
   {
    "fieldname": "column_break_rytl",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Autoname",
+   "depends_on": "eval:!doc.field_is_table",
+   "fieldname": "naming_rule",
+   "fieldtype": "Select",
+   "label": "Naming Rule",
+   "options": "\nBy Fieldname\nAutoname\nExpression\nRandom\nCustom"
+  },
+  {
+   "depends_on": "eval: (doc.naming_rule == \"Expression\") && !doc.field_is_table",
+   "description": "<p class=\"help-box small text-muted\">Format: <code>EXAMPLE-{MM}morewords{field_name1}-{field_name2}-{#####}</code> - Replace all braced words (fieldnames, date words (DD, MM, YY), series) with their value. Outside braces, any characters can be used.</p>",
+   "fieldname": "expression",
+   "fieldtype": "Data",
+   "label": "Expression",
+   "mandatory_depends_on": "eval: (doc.naming_rule == \"Expression\") && !doc.field_is_table"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval:doc.naming_format",
+   "fieldname": "naming_format_section",
+   "fieldtype": "Section Break",
+   "label": "Naming Format"
+  },
+  {
+   "depends_on": "eval:doc.naming_rule == \"Custom\"",
+   "fieldname": "naming_fields_grid",
+   "fieldtype": "Table",
+   "label": "Fields To Use To Generate Record ID (Sequence Of The Fields Matters)",
+   "mandatory_depends_on": "eval:doc.naming_rule == \"Custom\"",
+   "options": "Engagement Form Name Field"
   }
  ],
  "grid_page_length": 50,
@@ -353,7 +388,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-18 10:38:30.908976",
+ "modified": "2026-02-23 21:14:48.207095",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
