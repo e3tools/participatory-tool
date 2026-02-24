@@ -252,7 +252,7 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.trigger("setup_validations", cdt, cdn);
       frm.trigger("setup_link_field_filters", cdt, cdn);
     }
-    frm.trigger("make_additional_child_table_fields", cdt, cdn);
+    // frm.trigger("make_additional_child_table_fields", cdt, cdn);
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
