@@ -90,15 +90,9 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
-            EngagementFormField,
-        )
-        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
-            EngagementFormNameField,
-        )
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
-            EngagementFormPermission,
-        )
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import EngagementFormNameField
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -119,9 +113,7 @@ class EngagementForm(Document):
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
-        naming_rule: DF.Literal[
-            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
-        ]
+        naming_rule: DF.Literal["", "By Fieldname", "Autoname", "Expression", "Random", "Custom"]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
