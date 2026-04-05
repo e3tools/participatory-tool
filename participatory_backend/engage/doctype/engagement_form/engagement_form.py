@@ -75,6 +75,8 @@ class ReadOnlyField:
     target_field: str
     is_target_a_child_table: int
     target_child_table_doctype: str
+    parent_field_type: str
+    parent_options: str
 
 
 NEWLINE = "\r\n"
@@ -90,9 +92,15 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
-        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import EngagementFormNameField
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
+            EngagementFormField,
+        )
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
+            EngagementFormNameField,
+        )
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
+            EngagementFormPermission,
+        )
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -113,7 +121,9 @@ class EngagementForm(Document):
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
-        naming_rule: DF.Literal["", "By Fieldname", "Autoname", "Expression", "Random", "Custom"]
+        naming_rule: DF.Literal[
+            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
+        ]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
@@ -392,11 +402,6 @@ class EngagementForm(Document):
                 matching = [
                     x for x in self.form_fields if x.field_name == fld.linked_form
                 ]
-                field = ReadOnlyField()
-                field.parent_doctype = matching[0].field_doctype if matching else None
-                field.parent_property = fld.linked_form_property
-                field.parent_field = fld.linked_form
-                field.target_field = fld.field_name
                 (
                     is_table,
                     a,
@@ -404,11 +409,45 @@ class EngagementForm(Document):
                     x,
                     target_child_table_doctype,
                     z,
+                    parent_field_type,
+                    parent_field_options,
                 ) = self.is_linked_field_a_child_table(fld)
+                field = ReadOnlyField()
+                field.parent_doctype = matching[0].field_doctype if matching else None
+                field.parent_property = fld.linked_form_property
+                field.parent_field = fld.linked_form
+                field.target_field = fld.field_name
+                field.parent_field_type = parent_field_type
+                field.parent_options = parent_field_options
+
                 field.is_target_a_child_table = 1 if is_table else 0
                 if target_child_table_doctype:
                     field.target_child_table_doctype = target_child_table_doctype
                 self.read_only_fields_map.append(field)
+
+            # if fld.field_type == "Linked Field":
+            #     matching = [
+            #         x for x in self.form_fields if x.field_name == fld.linked_form
+            #     ]
+            #     field = ReadOnlyField()
+            #     field.parent_doctype = matching[0].field_doctype if matching else None
+            #     field.parent_property = fld.linked_form_property
+            #     field.parent_field = fld.linked_form
+            #     field.target_field = fld.field_name
+            #     (
+            #         is_table,
+            #         a,
+            #         b,
+            #         x,
+            #         target_child_table_doctype,
+            #         z,
+            #         k,
+            #         m
+            #     ) = self.is_linked_field_a_child_table(fld)
+            #     field.is_target_a_child_table = 1 if is_table else 0
+            #     if target_child_table_doctype:
+            #         field.target_child_table_doctype = target_child_table_doctype
+            #     self.read_only_fields_map.append(field)
 
             # If field_id is not specified, then field label must be specified to ensure an id is generated using the field label
             if not fld.field_label and not fld.field_name:
@@ -952,6 +991,15 @@ for i, itm in enumerate(doc.{field.field_name}):
                         )
                     )
                 return form_field.field_choices
+            if form_field.field_type == "Linked Field":
+                fld = [
+                    x
+                    for x in self.read_only_fields_map
+                    if x.target_field == form_field.field_name
+                ]
+                if fld:
+                    if not fld[0].is_target_a_child_table:
+                        return fld[0].parent_options
             return None
 
         def _set_depends_on(
@@ -1044,6 +1092,8 @@ for i, itm in enumerate(doc.{field.field_name}):
                 trigger_field_grid_name,
                 trigger_field_grid_doctype,
                 target_field,
+                parent_fieldtype,
+                parent_field_options,
             ) = self.is_linked_field_a_child_table(form_field)
             if is_table:
                 # create a child table which is to be reference as options for the field
@@ -1080,17 +1130,19 @@ for i, itm in enumerate(doc.{field.field_name}):
 
     def is_linked_field_a_child_table(
         self, field
-    ) -> tuple[bool, str, str, str, str, str]:
+    ) -> tuple[bool, str, str, str, str, str, str, str]:
         """
         Return true if the linked field property is a child table
 
-        Returns: tuple[bool, str, str, str, str]:
+        Returns: tuple[bool, str, str, str, str, str, str]:
                         bool: Whether this linked property references a Child Table field
                         trigger_field_name: Field whose value will determine the values to query
                         trigger_field_doctype: Doctype linked to Trigger Field
                         trigger_field_grid_name: child table property of trigger field Doctype whose values we will pull
                         trigger_field_grid_doctype: Doctype of child table field of the trigger field Doctype whose values we will pull
                         target_field: child table of the current form whose values we will be pulling from the trigger form
+                        fieldtype of the source form field where the data is being fetched
+                        options of the source form field where the data is being fetched
         """
         # get the doctype that is linked to this parent field
         parent_field = [
@@ -1108,6 +1160,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             field.linked_form_property,
             docfield.options,
             field.field_name,
+            docfield.fieldtype,
+            docfield.options,
         )
 
     def get_linked_field_field_type(self, field):
@@ -1122,10 +1176,12 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             return "Table"
-        return "Read Only"
+        return parent_field_type  # "Read Only"
 
     def get_linked_field_fetch_from(self, field):
         """
@@ -1139,6 +1195,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             return ""
@@ -1337,6 +1395,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             # try replicate the structure of the doctype if it does not exist
@@ -1896,11 +1956,13 @@ for i, itm in enumerate(doc.{field.field_name}):
                     link_source_fields = [
                         x.source_field for x in self.link_filters_map if x.source_field
                     ]
+                    # ignore linked fields that are not Table since Frappe already handles the Fetch From logic for non-table fields
                     read_only_source_fields = [
                         x.parent_field
                         for x in self.read_only_fields_map
-                        if x.parent_field
+                        if x.parent_field and x.is_target_a_child_table
                     ]
+
                     # merge with source fields as a result of Read Only fields
                     source_fields = set(link_source_fields + read_only_source_fields)
 
