@@ -2095,7 +2095,6 @@ for i, itm in enumerate(doc.{field.field_name}):
                             ]
                         )
 
-                        _make_readonly_trigger_for_child_tables(source_field=source)
                         # make handler for ReadOnly values that depend on this source
                         readonly_script = _make_readonly_trigger(source_field=source)
                         readonly_script += _make_readonly_trigger_for_child_tables(
