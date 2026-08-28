@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "field:form_name",
- "creation": "2025-03-18 11:42:15.727746",
+ "creation": "2026-02-23 21:22:22.802610",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -266,7 +266,7 @@
    "fieldname": "naming_field",
    "fieldtype": "Select",
    "label": "Field To Use As ID",
-   "mandatory_depends_on": "eval: (doc.use_field_to_generate_id || doc.naming_rule == \"By Fieldname\") && !doc.field_is_table"
+   "mandatory_depends_on": "eval: (/*doc.use_field_to_generate_id ||*/ doc.naming_rule == \"By Fieldname\") && !doc.field_is_table"
   },
   {
    "default": "0",
@@ -388,7 +388,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-23 21:14:48.207095",
+ "modified": "2026-03-05 13:16:26.466104",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
