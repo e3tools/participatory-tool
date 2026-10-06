@@ -17,6 +17,8 @@ class EngageSettings(Document):
 		app_introduction: DF.SmallText
 		app_name: DF.Data
 		app_slogan: DF.Data
+		background_color: DF.Color | None
+		border_radius: DF.Int
 		column_1_details: DF.SmallText | None
 		column_1_title: DF.Data | None
 		column_2_details: DF.SmallText | None
@@ -27,7 +29,11 @@ class EngageSettings(Document):
 		county_slogan: DF.Data
 		data_consent_statement: DF.TextEditor | None
 		logo: DF.AttachImage | None
+		primary_color: DF.Color | None
+		secondary_color: DF.Color | None
 		socket: DF.Data | None
+		surface_color: DF.Color | None
+		text_color: DF.Color | None
 		watermark_image: DF.AttachImage | None
 	# end: auto-generated types
 	def validate(self):

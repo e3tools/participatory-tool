@@ -30,6 +30,14 @@
   "column_3_details",
   "section_break_jaxf",
   "socket",
+  "mobile_app_theme_tab",
+  "primary_color",
+  "secondary_color",
+  "background_color",
+  "column_break_xcku",
+  "surface_color",
+  "text_color",
+  "border_radius",
   "basic_settings_tab",
   "terms",
   "data_consent_statement"
@@ -194,12 +202,58 @@
    "fieldname": "watermark_image",
    "fieldtype": "Attach Image",
    "label": "Web Form Watermark Image"
+  },
+  {
+   "fieldname": "mobile_app_theme_tab",
+   "fieldtype": "Tab Break",
+   "label": "Mobile App Theme"
+  },
+  {
+   "default": "#1B75D0",
+   "fieldname": "primary_color",
+   "fieldtype": "Color",
+   "label": "Primary Color"
+  },
+  {
+   "default": "#4B6A9B",
+   "fieldname": "secondary_color",
+   "fieldtype": "Color",
+   "label": "Secondary Color"
+  },
+  {
+   "default": "#F9FAFB",
+   "fieldname": "background_color",
+   "fieldtype": "Color",
+   "label": "Background Color"
+  },
+  {
+   "fieldname": "column_break_xcku",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#FFFFFF",
+   "fieldname": "surface_color",
+   "fieldtype": "Color",
+   "label": "Surface Color"
+  },
+  {
+   "default": "#111827",
+   "fieldname": "text_color",
+   "fieldtype": "Color",
+   "label": "Text Color"
+  },
+  {
+   "default": "8",
+   "fieldname": "border_radius",
+   "fieldtype": "Int",
+   "label": "Border Radius"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-03 08:38:02.833969",
+ "modified": "2026-09-01 09:38:17.520788",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engage Settings",
@@ -216,6 +270,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
