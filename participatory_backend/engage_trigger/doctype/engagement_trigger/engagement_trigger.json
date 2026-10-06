@@ -11,7 +11,13 @@
   "form_group",
   "enabled",
   "column_break_tdqs",
-  "condition",
+  "conditions_label",
+  "html_shjv",
+  "conditions_plain",
+  "conditions_loading",
+  "html_rxcq",
+  "conditions_evaluation_criteria",
+  "conditions",
   "html_gmzx",
   "set_condition",
   "section_break_eymk",
@@ -88,12 +94,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional: The trigger will be activated if this expression is true. If left blank, the trigger will apply to all records for the specified form",
-   "fieldname": "condition",
-   "fieldtype": "Small Text",
-   "label": "Condition"
-  },
-  {
    "fieldname": "trigger_outcomes_section",
    "fieldtype": "Section Break",
    "label": "Trigger Outcomes"
@@ -143,6 +143,7 @@
   {
    "fieldname": "html_gmzx",
    "fieldtype": "HTML",
+   "hidden": 1,
    "options": "<p><strong>Condition Examples:</strong></p>\n<pre>doc.status==\"Open\"<br>doc.due_date==nowdate()<br>doc.total &gt; 40000\n</pre>\n"
   },
   {
@@ -327,12 +328,52 @@
   {
    "fieldname": "column_break_qigz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "conditions_loading",
+   "fieldtype": "HTML"
+  },
+  {
+   "description": "Optional: The trigger will be activated if this expression is true. If left blank, the trigger will apply to all records for the specified form",
+   "fieldname": "conditions",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Condition",
+   "read_only": 1
+  },
+  {
+   "fieldname": "conditions_plain",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.conditions_plain && doc.conditions_plain != \"[]\"",
+   "fieldname": "conditions_evaluation_criteria",
+   "fieldtype": "Select",
+   "label": "<br>How to evaluate the conditions",
+   "options": "All these conditions must be met\nAny of these conditions must be met"
+  },
+  {
+   "fieldname": "conditions_label",
+   "fieldtype": "HTML",
+   "label": "<font color=\"secondary\">The trigger will be activated if below conditions are met.</font>",
+   "options": "<font color=\"secondary\">Conditions To Activate This Trigger</font>",
+   "read_only": 1
+  },
+  {
+   "fieldname": "html_rxcq",
+   "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "html_shjv",
+   "fieldtype": "HTML"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-17 20:27:54.066737",
+ "modified": "2026-10-06 07:38:22.419048",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",

@@ -17,6 +17,7 @@ from frappe.utils.file_manager import save_file_on_filesystem
 from frappe import ping as pinged
 from frappe.utils.data import get_url
 from frappe.desk.form.linked_with import get_linked_fields
+from frappe.desk.search import search_link
 
 # from frappe.frappeclient import FrappeClient
 # from frappe.client import get_list as get_doc_list
@@ -112,7 +113,9 @@ def get_list(
             boolean_fields = [x for x in meta.fields if x.fieldtype == "Check"]
             for rec in raw:
                 for field in boolean_fields:
-                    rec[field.fieldname] = True if rec[field.fieldname] == 1 else False
+                    if field.fieldname in rec:
+                        # check if property exists in the object
+                        rec[field.fieldname] = rec[field.fieldname] == 1
 
     raw = frappe.db.get_list(
         doctype=doctype,
@@ -130,6 +133,127 @@ def get_list(
     )
     transform_booleans()
     return raw
+
+
+@frappe.whitelist(allow_guest=True)
+def get_enriched_docs(
+    doctype,
+    # fields=None,
+    filters=None,
+    group_by=None,
+    order_by=None,
+    limit_start=None,
+    limit_page_length=0,
+    # parent=None,
+    debug: bool = False,
+    # as_dict: bool = True,
+    or_filters=None,
+    ignore_permissions: bool = True,
+):
+    """
+    This is a heavy function as it gets all child records
+
+    Args:
+        doctype (_type_): _description_
+        fields (_type_, optional): _description_. Defaults to None.
+        filters (_type_, optional): _description_. Defaults to None.
+        group_by (_type_, optional): _description_. Defaults to None.
+        order_by (_type_, optional): _description_. Defaults to None.
+        limit_start (_type_, optional): _description_. Defaults to None.
+        limit_page_length (int, optional): _description_. Defaults to 0.
+        debug (bool, optional): _description_. Defaults to False.
+        or_filters (_type_, optional): _description_. Defaults to None.
+        ignore_permissions (bool, optional): _description_. Defaults to True.
+    """
+
+    # def transform_booleans():
+    #     """
+    #     Transform to true/false as Javascript, unlike Python, understands 1/0 as different values from True/False
+    #     """
+    #     if doctype:
+    #         meta = frappe.get_meta(doctype)
+    #         boolean_fields = [x for x in meta.fields if x.fieldtype == "Check"]
+    #         for rec in raw:
+    #             for field in boolean_fields:
+    #                 rec[field.fieldname] = True if rec[field.fieldname] == 1 else False
+
+    doc_names = frappe.db.get_list(
+        doctype=doctype,
+        fields=["name"],
+        filters=filters,
+        group_by=group_by,
+        order_by=order_by,
+        limit_start=limit_start,
+        limit_page_length=limit_page_length,
+        # parent=parent,
+        debug=debug,
+        # as_dict=as_dict,
+        or_filters=or_filters,
+        ignore_permissions=ignore_permissions,
+    )
+    # transform_booleans()
+    docs = []
+    for doc_name in doc_names:
+        docs.append(frappe.get_doc(doctype, doc_name))
+    return docs
+
+
+@frappe.whitelist(allow_guest=True)
+def get_doc_value(
+    doctype,
+    fields=None,
+    filters=None,
+    group_by=None,
+    order_by=None,
+    limit_start=None,
+    limit_page_length=0,
+    # parent=None,
+    debug: bool = False,
+    # as_dict: bool = True,
+    or_filters=None,
+    ignore_permissions: bool = True,
+):
+    """
+    Args:
+        doctype (_type_): _description_
+        fields (_type_, optional): _description_. Defaults to None.
+        filters (_type_, optional): _description_. Defaults to None.
+        group_by (_type_, optional): _description_. Defaults to None.
+        order_by (_type_, optional): _description_. Defaults to None.
+        limit_start (_type_, optional): _description_. Defaults to None.
+        limit_page_length (int, optional): _description_. Defaults to 0.
+        debug (bool, optional): _description_. Defaults to False.
+        or_filters (_type_, optional): _description_. Defaults to None.
+        ignore_permissions (bool, optional): _description_. Defaults to True.
+    """
+
+    # def transform_booleans():
+    #     """
+    #     Transform to true/false as Javascript, unlike Python, understands 1/0 as different values from True/False
+    #     """
+    #     if doctype:
+    #         meta = frappe.get_meta(doctype)
+    #         boolean_fields = [x for x in meta.fields if x.fieldtype == "Check"]
+    #         for rec in raw:
+    #             for field in boolean_fields:
+    #                 rec[field.fieldname] = True if rec[field.fieldname] == 1 else False
+
+    doc_values = frappe.db.get_list(
+        doctype=doctype,
+        fields=fields or ["name"],
+        filters=filters,
+        group_by=group_by,
+        order_by=order_by,
+        limit_start=limit_start,
+        limit_page_length=limit_page_length,
+        # parent=parent,
+        debug=debug,
+        # as_dict=as_dict,
+        or_filters=or_filters,
+        ignore_permissions=ignore_permissions,
+    )
+    # transform_booleans()
+    return doc_values
 
 
 @frappe.whitelist(allow_guest=True)
@@ -171,15 +295,58 @@ def get_doctype(doctype: str, with_parent: int = 0):
                     if x.fieldname not in backend_field_names
                 ]
 
+    def override_formula_and_select_multiple_fields():
+        """
+        We want to create a new property `formula` to store the formula
+        This is because Frappe does not allow customization of core DocTypes otherwise we
+        would have added a Custom Field directly to DocField.
+
+        Also create is_select_multiple and select_multiple_choices properties when the field type is `Select Multiple`
+        """
+        form = frappe.db.exists("Engagement Form", doctype)
+        if form:
+            frm = frappe.get_doc("Engagement Form", doctype)
+            # Get formula fields
+            formula_fields = [x for x in frm.form_fields if x.formula]
+            if formula_fields:
+                for form_fld in formula_fields:
+                    for doctype_fld in res_doctype.fields:
+                        if form_fld.field_name == doctype_fld.fieldname:
+                            doctype_fld.update({"formula": form_fld.formula})
+                            break
+
+            # Get SElect Multiple fields
+            select_multiple_fields = [
+                x for x in frm.form_fields if x.field_type == "Select Multiple"
+            ]
+            if select_multiple_fields:
+                for sm_fld in select_multiple_fields:
+                    for doctype_fld in res_doctype.fields:
+                        if sm_fld.field_name == doctype_fld.fieldname:
+                            doctype_fld.update(
+                                {
+                                    "is_select_multiple": 1,
+                                    "select_multiple_choices": sm_fld.field_choices,
+                                }
+                            )
+                            break
+
     res_doctype = None
     getdoctype(doctype, with_parent=with_parent)
     if frappe.response.docs:
-        res_doctype = (
-            frappe.response.docs[-1]
-            if frappe.response.docs[-1].name == doctype
-            else None
-        )
-        filter_backend_only_fields()
+        # res_doctype = (
+        #     frappe.response.docs[-1]
+        #     if frappe.response.docs[-1].name == doctype
+        #     else None
+        # )
+        res_doctype = [x for x in frappe.response.docs if x.name == doctype]
+        if res_doctype:
+            res_doctype = res_doctype[0]
+        else:
+            res_doctype = None
+        if res_doctype:
+            override_formula_and_select_multiple_fields()
+            filter_backend_only_fields()
     return res_doctype
 
 
@@ -357,7 +524,7 @@ def export_data():
     return {"file": fl["file_url"]}
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def upsert_doc():
     """Upsert a doctype
 
@@ -371,11 +538,13 @@ def upsert_doc():
     # client = FrappeClient(site)
     # client = FrappeClient(get_url())
     doc = frappe._dict(frappe.form_dict)
+    doc = frappe._dict(json.loads(doc.doc))
     backend_only_fields = EngageUtil.get_backend_only_fields(doc.doctype)
-    doc = frappe.get_doc(doc).save(
-        ignore_mandatory=True if backend_only_fields else False
-    )
-    return doc
+    rec = frappe.get_doc(doc)
+    rec.flags.ignore_mandatory = True if backend_only_fields else False
+    rec.flags.ignore_permissions = True
+    rec.save()
+    return rec
     # docname = frappe.form_dict['docname']
     # if doc.name:
     #     res = client.update(doc)
@@ -384,7 +553,7 @@ def upsert_doc():
     # check if there are files
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def sync_records(doctype: str, docs: list):
     """
     Synchronize records from the frontend
@@ -394,11 +563,14 @@ def sync_records(doctype: str, docs: list):
                     docs (list): Records to synchronize
     """
     fails, success = [], []
+    if not isinstance(docs, list):
+        docs = [docs]
     if isinstance(docs, list):
         for rec in docs:
             try:
+                rec["doctype"] = doctype
                 doc = frappe.get_doc(rec)
-                doc.save()
+                doc.save(ignore_permissions=True)
                 success.append(rec["_name"])
             except Exception as e:
                 fails.append({"rec": rec, "error": str(e)})
@@ -478,3 +650,123 @@ def do_upload():
     Upload file
     """
     return upload_file()
+
+
+@frappe.whitelist(allow_guest=True)
+def get_survey(name):
+    # doc = frappe.get_doc("Survey", name)
+    # return json.loads(doc.survey_json)
+    schema = {
+        "title": "Customer Feedback",
+        "pages": [
+            {
+                "name": "page1",
+                "elements": [
+                    {"type": "text", "name": "name", "title": "Your name?"},
+                    {
+                        "type": "radiogroup",
+                        "name": "rating",
+                        "title": "Rate us",
+                        "choices": [1, 2, 3, 4, 5],
+                    },
+                ],
+            }
+        ],
+    }
+    return json.dumps(schema)
+
+
+@frappe.whitelist(allow_guest=True)
+def submit_response(survey_name, response):
+    doc = frappe.get_doc(
+        {"doctype": "Survey Response", "survey": survey_name, "response_json": response}
+    )
+    doc.insert(ignore_permissions=True)
+    return {"status": "saved"}
+
+
+@frappe.whitelist()
+def survey_summary(survey):
+    responses = frappe.get_all(
+        "Survey Response", filters={"survey": survey}, fields=["response_json"]
+    )
+
+    parsed = [json.loads(r.response_json) for r in responses]
+
+    # simple aggregation example
+    totals = {}
+    for resp in parsed:
+        for key, value in resp.items():
+            totals.setdefault(key, {})
+            totals[key][str(value)] = totals[key].get(str(value), 0) + 1
+
+    return totals
+
+
+@frappe.whitelist()
+def survey_pdf(survey):
+    responses = frappe.get_all(
+        "Survey Response", filters={"survey": survey}, fields=["response_json"]
+    )
+
+    html = f"<h2>Survey Report: {survey}</h2><ul>"
+    for r in responses:
+        html += f"<li>{r.response_json}</li>"
+    html += "</ul>"
+
+    pdf = get_pdf(html)
+
+    frappe.local.response.filename = f"Survey-{survey}-{nowdate()}.pdf"
+    frappe.local.response.filecontent = pdf
+    frappe.local.response.type = "download"
+
+
+@frappe.whitelist(allow_guest=True)
+def get_meta(doctype):
+    return frappe.get_meta(doctype).as_dict()
+
+
+@frappe.whitelist(allow_guest=True)
+def search_link_options(
+    doctype,
+    txt="",
+    start=0,
+    page_length=20,
+    query=None,
+    filters=None,
+    doc=None,
+):
+    """
+    Using search_link is preferrable because it respects:
+        - User permissions
+        - search fields
+        - title fields
+        - custom queries (get_query)
+        - standard Frappe Link behaviour
+    """
+    # return frappe.get_list(
+    #     doctype,
+    #     filters={},
+    #     fields=["name"],
+    #     limit_page_length=page_length,
+    #     or_filters=[
+    #         ["name", "like", f"%{txt}%"]
+    #     ]
+    # )
+    records = search_link(
+        doctype=doctype,
+        txt=txt,
+        # start=int(start),
+        page_length=int(page_length),
+        query=query,
+        filters=filters,
+    )
+    total_records = frappe.db.count(dt=doctype, filters=filters)
+    return {"items": records, "totalCount": total_records}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_all_translations(lang):
+    from frappe.translate import get_all_translations
+
+    return get_all_translations(lang=lang)

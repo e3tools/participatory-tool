@@ -94,15 +94,9 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
-            EngagementFormField,
-        )
-        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
-            EngagementFormNameField,
-        )
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
-            EngagementFormPermission,
-        )
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import EngagementFormNameField
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -123,9 +117,7 @@ class EngagementForm(Document):
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
-        naming_rule: DF.Literal[
-            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
-        ]
+        naming_rule: DF.Literal["", "By Fieldname", "Autoname", "Expression", "Random", "Custom"]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
@@ -571,6 +563,14 @@ class EngagementForm(Document):
                 fields.append(self._get_docfield(field))
                 if field.formula:  # if has formula, make field read_only
                     fields[-1]["read_only"] = True
+
+            # if field.formula:
+            #     # Save formula into the placeholder.
+            #     # Frappe does not allow customization of core DocTypes
+            #     field.placeholder = field.formula
+            # if field.field_type == "Select Multiple":
+            #     field.is_select_multiple = 1
+            #     field.select_multiple_choices = field.field_choices
 
         if self.is_new():
             doc: DocType = frappe.new_doc("DocType")
@@ -1019,8 +1019,13 @@ for i, itm in enumerate(doc.{field.field_name}):
             if exp.lower().startswith("eval:"):
                 return exp
             else:
-                return convert_depends_on_conditions_to_js_format(
-                    eval(exp), ref_field, ref_field_property, evaluation_criteria
+                return convert_conditions_to_js_py_format(
+                    conditions=eval(exp),
+                    ref_field=ref_field,
+                    ref_field_property=ref_field_property,
+                    ref_doctype=self.name,
+                    evaluation_criteria=evaluation_criteria,
+                    is_JS=True,
                 )  # return f"eval:{exp}"
 
         def _get_field_type(field: EngagementFormField):
@@ -2418,11 +2423,15 @@ def sanitize_web_filters(filters):
     return filters
 
 
-def convert_depends_on_conditions_to_js_format(
+def convert_conditions_to_js_py_format(
     conditions: list,
     ref_field: dict,
     ref_field_property: str,
+    ref_doctype: str,
     evaluation_criteria=AND_CONDITION_TEXT,
+    field_id_property: str = "field_name",
+    field_label_property: str = "field_label",
+    is_JS=True,
 ) -> str:
     """Convert filters entry as set by the Filters Dialog into js format i.e the format with eval:doc....
     Args:
@@ -2431,89 +2440,175 @@ def convert_depends_on_conditions_to_js_format(
     if len(conditions) <= 0:
         return ""
 
-    res = "eval:"
+    res = "eval:" if is_JS else ""
     for i, condition in enumerate(conditions):
         res += (
             "("
-            + construct_depends_on_js_expression(
-                condition, ref_field, ref_field_property
+            + construct_condition_to_expression(
+                condition,
+                ref_field,
+                ref_field_property,
+                ref_doctype,
+                field_id_property=field_id_property,
+                field_label_property=field_label_property,
+                is_JS=is_JS,
             )
             + ")"
         )
         if i != len(conditions) - 1:
-            res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
-
+            if is_JS:
+                res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
+            else:
+                res += " and " if evaluation_criteria == AND_CONDITION_TEXT else " or "
     return res
 
 
-def construct_depends_on_js_expression(
-    condition: list, ref_field: dict, ref_field_property: str
+def construct_condition_to_expression(
+    condition: list,
+    ref_field: dict,
+    ref_field_property: str,
+    ref_doctype: str,
+    field_id_property: str = "field_name",
+    field_label_property: str = "field_label",
+    is_JS=True,
 ) -> str:
-    """Construct a JS expression given a filter condition
+    """Construct a JS or Python expression given a filter condition
 
     Args:
-                    condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
+       condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
     """
+
+    def _prefix(val, is_condition_value=False):
+        is_list = isinstance(val, list)
+        is_number = isinstance(val, int) or isinstance(val, float)
+        val = (
+            '"' + str(val) + '"'
+            if (is_condition_value and not is_list and not is_number)
+            else val
+        )
+        if docfield.fieldtype == "Date":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.getdate({val})"
+        if docfield.fieldtype == "Datetime":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.get_datetime({val})"
+        if docfield.fieldtype == "Time":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.get_time({val})"
+
+        # if it is a condition value, enclose it in brackets
+        # if is_condition_value:
+        #     if isinstance(val, list):
+        #         return val
+        #     return '"' + val + '"'
+        return val
+
     if len(condition) < 4:  # condition has 4 parts
         return ""
 
     field = condition[1]
-    if field == ref_field.field_name:
+    # For name/ID field, construct a dummy object since there will be no docfield called `name`
+    docfield = (
+        frappe.get_meta(ref_doctype, True).get_field(field)
+        if field != "name"
+        else frappe._dict({"fieldtype": "Data"})
+    )
+    field_name = ref_field.get(field_id_property)
+    field_label = ref_field.get(field_label_property)
+    if field == field_name:
         frappe.throw(
-            f"Row {ref_field.idx}. {frappe.bold(ref_field.field_label)}. You cannot reference {frappe.bold(ref_field.field_name)} as a condition in {frappe.bold(ref_field_property)} property as you are self-referencing the same field. A field cannot depend on itself"
+            f"Row {ref_field.idx}. {frappe.bold(field_label)}. You cannot reference {frappe.bold(field_name)} as a condition in {frappe.bold(ref_field_property)} property as you are self-referencing the same field. A field cannot depend on itself"
         )
     operator = condition[2]
-    value = condition[3]
+    condition_value = condition[3]
     exp = ""
-    if isinstance(value, str) and value not in ["set", "not set"]:
-        value = '"' + value + '"'
+
+    # Prefix by Frappe functions where necessary
+    doc_value = _prefix(f"{DOC_PREFIX_FORMULA}{field}", is_condition_value=False)
+    value = _prefix(condition_value, is_condition_value=True)
+
+    # if isinstance(condition_value, str) and condition_value not in ["set", "not set"]:
+    #     value = '"' + value + '"'
 
     if operator == "=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}=={value}"
+        exp = f"{doc_value}=={value}"
 
     if operator == "!=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}!={value}"
+        exp = f"{doc_value}!={value}"
 
     if operator == "like":
-        exp = f"{DOC_PREFIX_FORMULA}{field}.indexOf({value}) != -1"
+        if is_JS:
+            exp = f"{doc_value}.indexOf({value}) != -1"
+        else:
+            exp = f"{value.lower()} in {doc_value}.lower()"
 
     if operator == "not like":
-        exp = f"{DOC_PREFIX_FORMULA}{field}.indexOf({value}) == -1"
+        if is_JS:
+            exp = f"{doc_value}.indexOf({value}) == -1"
+        else:
+            exp = f"{value.lower()} not in {doc_value}.lower()"
 
     if operator == "in":
-        exp += ""
-        for i, val in enumerate(value):
-            exp += f"{DOC_PREFIX_FORMULA}{field} == {val}"
-            if i != len(value) - 1:
-                exp += " || "
+        if is_JS:
+            exp += ""
+            for i, val in enumerate(value):
+                exp += f"{doc_value} == {val}"
+                if i != len(value) - 1:
+                    exp += " || "
+        else:
+            if isinstance(value, list):
+                exp = f"{doc_value} in {value}"
+            else:
+                exp = f"{value.lower()} in {doc_value}.lower()"
 
     if operator == "not in":
-        exp += ""
-        for i, val in enumerate(value):
-            exp += f"{DOC_PREFIX_FORMULA}{field} != {val}"
-            if i != len(value) - 1:
-                exp += " && "
+        if is_JS:
+            exp += ""
+            for i, val in enumerate(value):
+                exp += f"{doc_value} != {val}"
+                if i != len(value) - 1:
+                    exp += " && "
+        else:
+            if isinstance(value, list):
+                exp = f"{doc_value} not in {value}"
+            else:
+                exp = f"{value.lower()} not in {doc_value}.lower()"
 
     if operator == "is":
-        if value == "set":
-            exp = f"{DOC_PREFIX_FORMULA}{field}"
-        elif value == "not set":
-            exp = f"!{DOC_PREFIX_FORMULA}{field}"
+        if is_JS:
+            if condition_value == "set":
+                exp = f"{doc_value}"
+            elif condition_value == "not set":
+                exp = f"!{doc_value}"
+        else:
+            if condition_value == "set":
+                exp = f"{doc_value}"
+            elif condition_value == "not set":
+                exp = f"not {doc_value}"
 
     if operator == ">":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>{value}"
+        exp = f"{doc_value}>{value}"
 
     if operator == "<":
-        exp = f"{DOC_PREFIX_FORMULA}{field}<{value}"
+        exp = f"{doc_value}<{value}"
 
     if operator == ">=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>={value}"
+        exp = f"{doc_value}>={value}"
 
     if operator == "<=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}<={value}"
+        exp = f"{doc_value}<={value}"
 
     if operator == "Between":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>={value[0]} && {DOC_PREFIX_FORMULA}{field}<={value[1]}"
+        if is_JS:
+            exp = f"{doc_value}>={value[0]} && {doc_value}<={value[1]}"
+        else:
+            exp = f"{doc_value}>={value[0]} and {doc_value}<={value[1]}"
 
     if operator == "Timespan":
         pass

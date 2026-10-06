@@ -632,6 +632,7 @@ function set_skip_logic_conditions(frm, cdt, cdn) {
     }
   }
 
+  debugger;
   if (frm.doc.form_name) {
     // _create_filter_area();
     frappe.model.with_doctype(frm.doc.form_name, () => {
@@ -708,6 +709,7 @@ function generate_filter_from_json(frm, cdt, cdn, filters_field_name) {
 }
 
 function edit_filters(frm, doctype, existing_filters, on_add_filter) {
+  debugger;
   let field_doctype = doctype;
   //   const { frm } = store;
   make_filters_dialog(frm, on_add_filter);

@@ -24,6 +24,10 @@ from participatory_backend.utils.common import is_float
 from participatory_backend.engage.doctype.engagement_profile.engagement_profile import (
     get_user_emails_by_engagement_profile,
 )
+from participatory_backend.engage.doctype.engagement_form.engagement_form import (
+    AND_CONDITION_TEXT,
+    convert_conditions_to_js_py_format,
+)
 
 ACCEPTABLE_FIELD_TYPE_CONVERSIONS = [
     {"src": "Data", "dst": "Read Only", "bidirectional": True},
@@ -52,7 +56,9 @@ class EngagementTrigger(Document):
         attach_print: DF.Check
         change_field: DF.Literal[None]
         channel: DF.Literal["", "Email", "SMS"]
-        condition: DF.SmallText | None
+        conditions: DF.SmallText | None
+        conditions_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
+        conditions_plain: DF.SmallText | None
         enabled: DF.Check
         engagement_form: DF.Link
         field_linking_forms: DF.Literal[None]
@@ -78,7 +84,7 @@ class EngagementTrigger(Document):
 
     def validate(self):
         # check cyclic dependency
-        self.condition = (self.condition or "").strip()
+        self.conditions = (self.conditions or "").strip()
         if self.outcome_type in [
             "Update Another Form Record",
             "Create Another Form Record",
@@ -95,7 +101,7 @@ class EngagementTrigger(Document):
                 )
             )
 
-        if self.activate_trigger_on == "Time Lapse" and not self.condition:
+        if self.activate_trigger_on == "Time Lapse" and not self.conditions:
             frappe.throw(
                 _(
                     "When the Activate Trigger On is Time Lapse, you must specify the condition(s)"
@@ -105,6 +111,7 @@ class EngagementTrigger(Document):
             recipient.condition = (recipient.condition or "").strip()
 
         self.validate_update_values()
+        self.convert_conditions()
 
     def _do_validate_update_value(self, target_form_field, value_to_update, idx):
         # field = [x for x in target_form_fields if x.fieldname == field_to_update]
@@ -214,6 +221,42 @@ class EngagementTrigger(Document):
                         f"Row {idx}. Both source and target field must have the same Select choices."
                     )
                 )
+
+    def convert_conditions(self):
+        field = self.meta.get_field("conditions")
+        self.conditions = self._set_conditions(
+            exp=self.conditions_plain,
+            ref_field=field,
+            ref_field_property="Conditions To Activate This Trigger",
+            evaluation_criteria=self.conditions_evaluation_criteria,
+        )
+
+    def _set_conditions(
+        self,
+        exp: str,
+        ref_field: dict,
+        ref_field_property: str,
+        evaluation_criteria=AND_CONDITION_TEXT,
+    ):
+        """
+        Set depends on expression
+        """
+        if not exp:
+            return ""
+        exp = exp.strip()
+        # if exp.lower().startswith("eval:"):
+        #     return exp
+        # else:
+        return convert_conditions_to_js_py_format(
+            conditions=eval(exp),
+            ref_field=ref_field,
+            ref_field_property=ref_field_property,
+            ref_doctype=self.engagement_form,
+            evaluation_criteria=evaluation_criteria,
+            field_id_property="fieldname",
+            field_label_property="label",
+            is_JS=False,
+        )  # return f"eval:{exp}"
 
     def validate_update_values(self):
         """
