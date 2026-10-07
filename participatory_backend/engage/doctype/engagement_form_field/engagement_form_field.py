@@ -21,6 +21,7 @@ class EngagementFormField(Document):
 		depends_on_evaluation_criteria: DF.Literal["All these conditions must be met", "Any of these conditions must be met"]
 		depends_on_plain: DF.SmallText | None
 		description: DF.SmallText | None
+		expression_json: DF.SmallText | None
 		field_child_doctype: DF.Link | None
 		field_choices: DF.SmallText | None
 		field_default: DF.Data | None

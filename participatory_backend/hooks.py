@@ -24,6 +24,8 @@ add_to_apps_screen = [
 # app_include_css = "/assets/participatory_backend/css/participatory_backend.css"
 # app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 
+app_include_js = ["/assets/participatory_backend/js/alpine.min.js"]
+
 
 # include js, css files in header of web template
 # web_include_css = "/assets/participatory_backend/css/participatory_backend.css"
@@ -98,6 +100,9 @@ doctype_js = {
 
 # before_install = "participatory_backend.install.before_install"
 # after_install = "participatory_backend.install.after_install"
+
+# hooks.py
+after_migrate = "participatory_backend.install.add_docfield_customizations"
 
 # Uninstallation
 # ------------
@@ -304,4 +309,8 @@ fixtures = [
     #           ]
     #       ]
     #   },
+]
+
+website_route_rules = [
+    {"from_route": "/frontend/<path:app_path>", "to_route": "frontend"},
 ]

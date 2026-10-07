@@ -770,3 +770,10 @@ def get_all_translations(lang):
     from frappe.translate import get_all_translations
 
     return get_all_translations(lang=lang)
+
+
+@frappe.whitelist(allow_guest=True)
+def evaluate_formula(formula_tokens, row_data, doctype, target_field):
+    from participatory_backend.utils.expression import evaluate_formula as evaluate
+
+    return evaluate(formula_tokens, row_data, doctype, target_field)
