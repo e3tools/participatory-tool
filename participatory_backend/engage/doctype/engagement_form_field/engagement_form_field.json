@@ -79,7 +79,8 @@
    "fieldname": "field_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Field ID"
+   "label": "Field ID",
+   "no_copy": 1
   },
   {
    "fieldname": "field_type",
@@ -523,7 +524,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-10-06 15:30:22.109817",
+ "modified": "2026-10-07 10:39:31.573978",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form Field",

@@ -238,6 +238,12 @@ frappe.ui.form.on("Engagement Form", {
     );
     frm.refresh_field("qr_code_preview");
   },
+  after_load(frm) {
+    set_name_field_options(frm);
+  },
+  after_save(frm) {
+    set_name_field_options(frm);
+  },
 });
 
 frappe.ui.form.on("Engagement Form Field", {
@@ -386,29 +392,6 @@ frappe.ui.form.on("Engagement Form Field", {
         window.Alpine.initTree(wrapper);
       }
     });
-
-    // // Get sibling fields from the parent form or other child fields for referencing
-    // let available_fields = frm.doc.form_fields || [];
-
-    // available_fields = available_fields
-    //   .filter((f) =>
-    //     ["Float", "Int", "Currency", "Percent"].includes(f.field_type),
-    //   )
-    //   .map((f) => f.field_name);
-
-    // if (available_fields.length === 0) {
-    //   available_fields = ["qty", "rate", "amount", "unit_price"];
-    // }
-    // debugger;
-    // // Render the Alpine.js component template
-    // $(wrapper).html(get_alpine_template(cdt, cdn, row, available_fields));
-
-    // // Initialize Alpine component if not already globally active
-    // //if (window.Alpine) {
-    // if (window.Alpine && typeof window.Alpine.initTree === "function") {
-    //   debugger;
-    //   window.Alpine.initTree(wrapper);
-    // }
   },
   field_type: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -435,6 +418,10 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.trigger("linked_form", cdt, cdn);
     }
     frm.trigger("layout_fields", cdt, cdn);
+    set_name_field_options(frm);
+  },
+  field_label: function (frm, cdt, cdn) {
+    set_name_field_options(frm);
   },
   linked_form: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -1170,6 +1157,7 @@ const set_title_field_options = function (frm) {
 const set_name_field_options = function (frm) {
   const val = frm.doc.naming_field;
   let label_val = "";
+  let id_val = "";
   let fields = [];
   frm.doc.form_fields?.forEach((field) => {
     if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
@@ -1181,18 +1169,26 @@ const set_name_field_options = function (frm) {
     }
     if (field.field_name === val) {
       label_val = field.field_label;
+      id_val = field.field_name;
     }
   });
+
   fields.sort((a, b) =>
     a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
+
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+
+  /*
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "naming_field",
     label_val,
-  );
+  );*/
+
+  frm.set_value("naming_field", label_val);
+  frm.set_value("naming_field", id_val);
 };
 
 const set_name_fields_in_grid = function (frm) {
@@ -1280,12 +1276,16 @@ const set_name_fields_in_grid = function (frm) {
     a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+
+  /*
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "naming_field",
     label_val,
   );
+  */
+  frm.set_value("naming_field", label_val);
 };
 
 const get_linked_form_doctype = (frm, field_name) => {

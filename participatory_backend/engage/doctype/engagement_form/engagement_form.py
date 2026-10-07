@@ -94,9 +94,15 @@ class EngagementForm(Document):
 
     if TYPE_CHECKING:
         from frappe.types import DF
-        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import EngagementFormField
-        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import EngagementFormNameField
-        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import EngagementFormPermission
+        from participatory_backend.engage.doctype.engagement_form_field.engagement_form_field import (
+            EngagementFormField,
+        )
+        from participatory_backend.engage.doctype.engagement_form_name_field.engagement_form_name_field import (
+            EngagementFormNameField,
+        )
+        from participatory_backend.engage.doctype.engagement_form_permission.engagement_form_permission import (
+            EngagementFormPermission,
+        )
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
@@ -117,7 +123,9 @@ class EngagementForm(Document):
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
-        naming_rule: DF.Literal["", "By Fieldname", "Autoname", "Expression", "Random", "Custom"]
+        naming_rule: DF.Literal[
+            "", "By Fieldname", "Autoname", "Expression", "Random", "Custom"
+        ]
         public_url: DF.Data | None
         publish_end_date: DF.Date | None
         publish_start_date: DF.Date | None
@@ -198,7 +206,11 @@ class EngagementForm(Document):
                             f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
                         )
                     )
-                self.naming_field = fld[0].field_name
+                self.naming_field = (
+                    fld[0].field_name
+                    if fld[0].field_name
+                    else self.generate_field_name(fld[0].field_label)
+                )
         else:
             self.naming_field = None
 
@@ -323,6 +335,10 @@ class EngagementForm(Document):
                     "DocType", self.name, "show_title_field_in_link", True
                 )
 
+    def generate_field_name(self, field_label):
+        id = scrub(field_label, False).strip()
+        return strip_special_characters(id, False)
+
     def validate_fields(self):
         for fld in self.form_fields:
             if fld.field_type in ["Column Break", "Section Break"]:
@@ -355,7 +371,7 @@ class EngagementForm(Document):
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
             if not fld.field_name:  # when field has not been set
-                fld.field_name = scrub(fld.field_label, False).strip()
+                fld.field_name = self.generate_field_name(fld.field_label)
             elif hasattr(fld, "__islocal") and fld.get(
                 "__islocal"
             ):  # if its a new field, then replace special characters. do not modify names for existing fields as it may lead to data loss
