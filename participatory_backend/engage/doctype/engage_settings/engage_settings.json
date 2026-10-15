@@ -18,6 +18,9 @@
   "app_slogan",
   "column_break_yaoh",
   "app_introduction",
+  "section_break_oonq",
+  "preview_forms_in_mobile_app",
+  "mobile_app_url",
   "website_footer_details_tab",
   "footer_section",
   "column_1_title",
@@ -247,13 +250,29 @@
    "fieldname": "border_radius",
    "fieldtype": "Int",
    "label": "Border Radius"
+  },
+  {
+   "default": "0",
+   "fieldname": "preview_forms_in_mobile_app",
+   "fieldtype": "Check",
+   "label": "Preview Forms in Mobile App"
+  },
+  {
+   "fieldname": "mobile_app_url",
+   "fieldtype": "Data",
+   "label": "Mobile App URL"
+  },
+  {
+   "fieldname": "section_break_oonq",
+   "fieldtype": "Section Break",
+   "label": "Mobile App"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-01 09:38:17.520788",
+ "modified": "2026-10-15 11:54:51.845397",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engage Settings",

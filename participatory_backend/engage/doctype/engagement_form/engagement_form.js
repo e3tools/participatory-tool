@@ -171,8 +171,24 @@ frappe.ui.form.on("Engagement Form", {
       if (frm.doc.enable_web_form && !frm.doc.user_cannot_create) {
         frm.add_custom_button(
           __("Public View", [__(frm.doc.name)]),
-          () => {
-            window.open(`/${frappe.router.slug(frm.doc.route)}/new`);
+          async () => {
+            frappe.db.get_value(
+              "Engage Settings",
+              { name: "Engage Settings" },
+              ["preview_forms_in_mobile_app"],
+              (r) => {
+                if (r) {
+                  let isMobilePreview = r.preview_forms_in_mobile_app == "1";
+                  let url = `/${frappe.router.slug(frm.doc.route)}/new`;
+                  if (isMobilePreview) {
+                    if (frm.doc.mobile_preview_url) {
+                      url = `${frm.doc.mobile_preview_url}`;
+                    }
+                  }
+                  window.open(`${url}`, "_blank");
+                }
+              },
+            );
           },
           __("Actions"),
         );

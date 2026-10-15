@@ -120,6 +120,7 @@ class EngagementForm(Document):
         form_permissions: DF.Table[EngagementFormPermission]
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
+        mobile_preview_url: DF.Data | None
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
@@ -183,6 +184,7 @@ class EngagementForm(Document):
             self.get_route()
         )  # self.web_title.lower().replace(" ", "-") if self.web_title else None
         self.public_url = self.get_route(fqdn=True)
+        self.mobile_preview_url = self.get_mobile_app_url()
         self.create_data_protection_fields()
         self.make_doctype()
         if self.user_cannot_create:
@@ -1713,6 +1715,20 @@ for i, itm in enumerate(doc.{field.field_name}):
         if route and fqdn:
             route = get_url(route)
         return route
+
+    def get_mobile_app_url(self):
+        """
+        Get mobile app url
+        """
+        if self.field_is_table:
+            return None
+        # route = self.web_title.lower().replace(" ", "-") if not self.route else self.route
+        mobile_app_url = frappe.db.get_singles_value(
+            "Engage Settings", "mobile_app_url"
+        )
+        if mobile_app_url:
+            return f"{mobile_app_url.strip('/')}/preview-form?doctype={self.form_name}"
+        return None
 
     def get_field_name(self, form_field):
         name = form_field.field_name or scrub(form_field.field_label)

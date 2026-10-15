@@ -40,6 +40,7 @@
   "column_break_qgzs",
   "web_title",
   "public_url",
+  "mobile_preview_url",
   "period_to_collect_data_section",
   "publish_start_date",
   "column_break_oqxz",
@@ -381,6 +382,13 @@
    "label": "Fields To Use To Generate Record ID (Sequence Of The Fields Matters)",
    "mandatory_depends_on": "eval:doc.naming_rule == \"Custom\"",
    "options": "Engagement Form Name Field"
+  },
+  {
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
+   "fieldname": "mobile_preview_url",
+   "fieldtype": "Data",
+   "label": "Mobile Preview URL",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -388,7 +396,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 08:43:05.773016",
+ "modified": "2026-10-15 12:32:20.140449",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

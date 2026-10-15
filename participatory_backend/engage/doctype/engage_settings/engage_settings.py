@@ -29,6 +29,8 @@ class EngageSettings(Document):
 		county_slogan: DF.Data
 		data_consent_statement: DF.TextEditor | None
 		logo: DF.AttachImage | None
+		mobile_app_url: DF.Data | None
+		preview_forms_in_mobile_app: DF.Check
 		primary_color: DF.Color | None
 		secondary_color: DF.Color | None
 		socket: DF.Data | None

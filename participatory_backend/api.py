@@ -363,6 +363,52 @@ def get_doc(doctype: str, docname: str):
         return None
 
 
+@frappe.whitelist(methods=["DELETE"], allow_guest=True)
+def delete_doc(doctype: str, docname: str):
+    """
+    Delete a Frappe document and return errors when they occur.
+
+    Example API:
+    DELETE /api/method/my_app.api.delete_document
+        ?doctype=Customer&name=CUST-00001
+    """
+
+    try:
+        # Delete the document; permissions are checked by default.
+        frappe.delete_doc(doctype=doctype, name=docname, ignore_permissions=False)
+
+        return {
+            "success": True,
+            "message": f"{doctype} {docname} deleted successfully.",
+        }
+
+    except frappe.DoesNotExistError as e:
+        frappe.local.response["http_status_code"] = 404
+        return {"success": False, "error": str(e), "error_type": "DoesNotExistError"}
+
+    except frappe.PermissionError as e:
+        frappe.local.response["http_status_code"] = 403
+        return {"success": False, "error": str(e), "error_type": "PermissionError"}
+
+    except frappe.LinkExistsError as e:
+        frappe.local.response["http_status_code"] = 409
+        return {"success": False, "error": str(e), "error_type": "LinkExistsError"}
+
+    except frappe.ValidationError as e:
+        frappe.local.response["http_status_code"] = 400
+        return {"success": False, "error": str(e), "error_type": "ValidationError"}
+
+    except Exception as e:
+        # Log the full exception for debugging.
+        frappe.log_error(
+            title=f"Failed to delete {doctype} {docname}",
+            message=frappe.get_traceback(),
+        )
+
+        frappe.local.response["http_status_code"] = 500
+        return {"success": False, "error": str(e), "error_type": type(e).__name__}
+
+
 @frappe.whitelist()
 def get_count(**kwargs):
     return get_record_count()
@@ -571,15 +617,38 @@ def sync_records(doctype: str, docs: list):
                 rec["doctype"] = doctype
                 doc = frappe.get_doc(rec)
                 doc.save(ignore_permissions=True)
-                success.append(rec["_name"])
+                success.append(rec)
             except Exception as e:
                 fails.append({"rec": rec, "error": str(e)})
-                pass
     return {
         "res": len(fails) == 0 and len(docs) != 0,
         "fail": fails,
         "success": success,
     }
+
+
+@frappe.whitelist(allow_guest=True)
+def sync_record(doctype: str, doc: dict):
+    """
+    Synchronize record from the frontend
+
+    Args:
+                    doctype (str): Doctype
+                    doc: Record to synchronize
+    """
+    success = False
+    error = None
+    rec = {}
+
+    try:
+        doc["doctype"] = doctype
+        rec = frappe.get_doc(doc)
+        rec.save(ignore_permissions=True)
+        success = True
+    except Exception as e:
+        error = str(e)
+        success = False
+    return {"error": error, "success": success, "doc": rec}
 
 
 @frappe.whitelist(allow_guest=True)
