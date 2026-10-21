@@ -7,6 +7,16 @@ app_description = "Backend to support participatory process"
 app_email = "stevenyaga@gmail.com"
 app_license = "MIT"
 
+add_to_apps_screen = [
+    {
+        "name": "participatory_backend",
+        # "logo": "/assets/insights/frontend/insights-logo.png",
+        "title": "Engage",
+        "route": "/app/engage",
+        # "has_permission": "insights.permissions.check_app_permission",
+    }
+]
+
 # Includes in <head>
 # ------------------
 
@@ -14,9 +24,21 @@ app_license = "MIT"
 # app_include_css = "/assets/participatory_backend/css/participatory_backend.css"
 # app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 
+app_include_js = ["/assets/participatory_backend/js/alpine.min.js"]
+
+
 # include js, css files in header of web template
 # web_include_css = "/assets/participatory_backend/css/participatory_backend.css"
 # web_include_js = "/assets/participatory_backend/js/participatory_backend.js"
+
+web_include_css = [
+    "/assets/participatory_backend/css/survey.min.css",
+    "/assets/participatory_backend/css/defaultV2.min.css",
+]
+
+web_include_js = [
+    "/assets/participatory_backend/js/survey.jquery.min.js",
+]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "participatory_backend/public/scss/website"
@@ -27,6 +49,15 @@ app_license = "MIT"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
+
+# page_js = {
+#     "engage_page": [
+#         "public/js/survey.core.min.js",
+#         "public/js/survey-react-ui.min.js",
+#         "public/css/survey-core.min.css",
+#     ]
+# }
+
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -69,6 +100,9 @@ doctype_js = {
 
 # before_install = "participatory_backend.install.before_install"
 # after_install = "participatory_backend.install.after_install"
+
+# hooks.py
+after_migrate = "participatory_backend.install.add_docfield_customizations"
 
 # Uninstallation
 # ------------
@@ -275,4 +309,8 @@ fixtures = [
     #           ]
     #       ]
     #   },
+]
+
+website_route_rules = [
+    {"from_route": "/frontend/<path:app_path>", "to_route": "frontend"},
 ]

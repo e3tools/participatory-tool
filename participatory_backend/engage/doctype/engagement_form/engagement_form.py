@@ -57,6 +57,8 @@ DOC_PREFIX_FORMULA = "doc."
 AND_CONDITION_TEXT = "All these conditions must be met"
 OR_CONDITION_TEXT = "Any of these conditions must be met"
 
+REPLACE_READONLY_FIELDTYPE_WITH_ORIGINAL_FIELDTYPE = True
+
 
 class FieldFilter:
     source_field: str
@@ -75,6 +77,8 @@ class ReadOnlyField:
     target_field: str
     is_target_a_child_table: int
     target_child_table_doctype: str
+    parent_field_type: str
+    parent_options: str
 
 
 NEWLINE = "\r\n"
@@ -116,6 +120,7 @@ class EngagementForm(Document):
         form_permissions: DF.Table[EngagementFormPermission]
         include_logo_in_web_form: DF.Check
         make_attachments_public: DF.Check
+        mobile_preview_url: DF.Data | None
         naming_field: DF.Literal[None]
         naming_fields_grid: DF.Table[EngagementFormNameField]
         naming_format: DF.Data | None
@@ -179,6 +184,7 @@ class EngagementForm(Document):
             self.get_route()
         )  # self.web_title.lower().replace(" ", "-") if self.web_title else None
         self.public_url = self.get_route(fqdn=True)
+        self.mobile_preview_url = self.get_mobile_app_url()
         self.create_data_protection_fields()
         self.make_doctype()
         if self.user_cannot_create:
@@ -202,7 +208,11 @@ class EngagementForm(Document):
                             f"The field {frappe.bold(fld[0].field_label)} must be mandatory for it to be used to generate record ids"
                         )
                     )
-                self.naming_field = fld[0].field_name
+                self.naming_field = (
+                    fld[0].field_name
+                    if fld[0].field_name
+                    else self.generate_field_name(fld[0].field_label)
+                )
         else:
             self.naming_field = None
 
@@ -327,6 +337,10 @@ class EngagementForm(Document):
                     "DocType", self.name, "show_title_field_in_link", True
                 )
 
+    def generate_field_name(self, field_label):
+        id = scrub(field_label, False).strip()
+        return strip_special_characters(id, False)
+
     def validate_fields(self):
         for fld in self.form_fields:
             if fld.field_type in ["Column Break", "Section Break"]:
@@ -359,7 +373,7 @@ class EngagementForm(Document):
             if fld.field_type in ["Table", "Table MultiSelect", "Select Multiple"]:
                 fld.field_in_list_view = 0  # Table and multiselect fields are not allowed to have In List View
             if not fld.field_name:  # when field has not been set
-                fld.field_name = scrub(fld.field_label, False).strip()
+                fld.field_name = self.generate_field_name(fld.field_label)
             elif hasattr(fld, "__islocal") and fld.get(
                 "__islocal"
             ):  # if its a new field, then replace special characters. do not modify names for existing fields as it may lead to data loss
@@ -400,11 +414,6 @@ class EngagementForm(Document):
                 matching = [
                     x for x in self.form_fields if x.field_name == fld.linked_form
                 ]
-                field = ReadOnlyField()
-                field.parent_doctype = matching[0].field_doctype if matching else None
-                field.parent_property = fld.linked_form_property
-                field.parent_field = fld.linked_form
-                field.target_field = fld.field_name
                 (
                     is_table,
                     a,
@@ -412,11 +421,45 @@ class EngagementForm(Document):
                     x,
                     target_child_table_doctype,
                     z,
+                    parent_field_type,
+                    parent_field_options,
                 ) = self.is_linked_field_a_child_table(fld)
+                field = ReadOnlyField()
+                field.parent_doctype = matching[0].field_doctype if matching else None
+                field.parent_property = fld.linked_form_property
+                field.parent_field = fld.linked_form
+                field.target_field = fld.field_name
+                field.parent_field_type = parent_field_type
+                field.parent_options = parent_field_options or ""
+
                 field.is_target_a_child_table = 1 if is_table else 0
                 if target_child_table_doctype:
                     field.target_child_table_doctype = target_child_table_doctype
                 self.read_only_fields_map.append(field)
+
+            # if fld.field_type == "Linked Field":
+            #     matching = [
+            #         x for x in self.form_fields if x.field_name == fld.linked_form
+            #     ]
+            #     field = ReadOnlyField()
+            #     field.parent_doctype = matching[0].field_doctype if matching else None
+            #     field.parent_property = fld.linked_form_property
+            #     field.parent_field = fld.linked_form
+            #     field.target_field = fld.field_name
+            #     (
+            #         is_table,
+            #         a,
+            #         b,
+            #         x,
+            #         target_child_table_doctype,
+            #         z,
+            #         k,
+            #         m
+            #     ) = self.is_linked_field_a_child_table(fld)
+            #     field.is_target_a_child_table = 1 if is_table else 0
+            #     if target_child_table_doctype:
+            #         field.target_child_table_doctype = target_child_table_doctype
+            #     self.read_only_fields_map.append(field)
 
             # If field_id is not specified, then field label must be specified to ensure an id is generated using the field label
             if not fld.field_label and not fld.field_name:
@@ -538,6 +581,14 @@ class EngagementForm(Document):
                 fields.append(self._get_docfield(field))
                 if field.formula:  # if has formula, make field read_only
                     fields[-1]["read_only"] = True
+
+            # if field.formula:
+            #     # Save formula into the placeholder.
+            #     # Frappe does not allow customization of core DocTypes
+            #     field.placeholder = field.formula
+            # if field.field_type == "Select Multiple":
+            #     field.is_select_multiple = 1
+            #     field.select_multiple_choices = field.field_choices
 
         if self.is_new():
             doc: DocType = frappe.new_doc("DocType")
@@ -960,6 +1011,15 @@ for i, itm in enumerate(doc.{field.field_name}):
                         )
                     )
                 return form_field.field_choices
+            if form_field.field_type == "Linked Field":
+                fld = [
+                    x
+                    for x in self.read_only_fields_map
+                    if x.target_field == form_field.field_name
+                ]
+                if fld:
+                    if not fld[0].is_target_a_child_table:
+                        return fld[0].parent_options
             return None
 
         def _set_depends_on(
@@ -977,8 +1037,13 @@ for i, itm in enumerate(doc.{field.field_name}):
             if exp.lower().startswith("eval:"):
                 return exp
             else:
-                return convert_depends_on_conditions_to_js_format(
-                    eval(exp), ref_field, ref_field_property, evaluation_criteria
+                return convert_conditions_to_js_py_format(
+                    conditions=eval(exp),
+                    ref_field=ref_field,
+                    ref_field_property=ref_field_property,
+                    ref_doctype=self.name,
+                    evaluation_criteria=evaluation_criteria,
+                    is_JS=True,
                 )  # return f"eval:{exp}"
 
         def _get_field_type(field: EngagementFormField):
@@ -1052,6 +1117,8 @@ for i, itm in enumerate(doc.{field.field_name}):
                 trigger_field_grid_name,
                 trigger_field_grid_doctype,
                 target_field,
+                parent_fieldtype,
+                parent_field_options,
             ) = self.is_linked_field_a_child_table(form_field)
             if is_table:
                 # create a child table which is to be reference as options for the field
@@ -1088,17 +1155,19 @@ for i, itm in enumerate(doc.{field.field_name}):
 
     def is_linked_field_a_child_table(
         self, field
-    ) -> tuple[bool, str, str, str, str, str]:
+    ) -> tuple[bool, str, str, str, str, str, str, str]:
         """
         Return true if the linked field property is a child table
 
-        Returns: tuple[bool, str, str, str, str]:
+        Returns: tuple[bool, str, str, str, str, str, str]:
                         bool: Whether this linked property references a Child Table field
                         trigger_field_name: Field whose value will determine the values to query
                         trigger_field_doctype: Doctype linked to Trigger Field
                         trigger_field_grid_name: child table property of trigger field Doctype whose values we will pull
                         trigger_field_grid_doctype: Doctype of child table field of the trigger field Doctype whose values we will pull
                         target_field: child table of the current form whose values we will be pulling from the trigger form
+                        fieldtype of the source form field where the data is being fetched
+                        options of the source form field where the data is being fetched
         """
         # get the doctype that is linked to this parent field
         parent_field = [
@@ -1116,6 +1185,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             field.linked_form_property,
             docfield.options,
             field.field_name,
+            docfield.fieldtype,
+            docfield.options,
         )
 
     def get_linked_field_field_type(self, field):
@@ -1130,10 +1201,12 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             return "Table"
-        return "Read Only"
+        return parent_field_type  # "Read Only"
 
     def get_linked_field_fetch_from(self, field):
         """
@@ -1147,6 +1220,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             return ""
@@ -1304,9 +1379,7 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_table_property: str,
             target_field: str,
         ):
-            self.child_table_filter_scripts[
-                trigger_field
-            ] = f"""{NEWLINE}
+            self.child_table_filter_scripts[trigger_field] = f"""{NEWLINE}
                         {trigger_field}: function(frm){OPEN_BRACKET}
                             frm.clear_table("{target_field}");
                             if(!frm.doc.{trigger_field}){OPEN_BRACKET}
@@ -1345,6 +1418,8 @@ for i, itm in enumerate(doc.{field.field_name}):
             trigger_field_grid_name,
             trigger_field_grid_doctype,
             target_field,
+            parent_field_type,
+            parent_field_options,
         ) = self.is_linked_field_a_child_table(field)
         if is_table:
             # try replicate the structure of the doctype if it does not exist
@@ -1641,6 +1716,20 @@ for i, itm in enumerate(doc.{field.field_name}):
             route = get_url(route)
         return route
 
+    def get_mobile_app_url(self):
+        """
+        Get mobile app url
+        """
+        if self.field_is_table:
+            return None
+        # route = self.web_title.lower().replace(" ", "-") if not self.route else self.route
+        mobile_app_url = frappe.db.get_singles_value(
+            "Engage Settings", "mobile_app_url"
+        )
+        if mobile_app_url:
+            return f"{mobile_app_url.strip('/')}/preview-form?doctype={self.form_name}"
+        return None
+
     def get_field_name(self, form_field):
         name = form_field.field_name or scrub(form_field.field_label)
         return name[:FIELD_NAME_MAX_LENGTH]
@@ -1681,9 +1770,7 @@ for i, itm in enumerate(doc.{field.field_name}):
                         background-size: cover;
                         background-position: center;
                     }}
-                    """.format(
-                        watermark_img=watermark_img
-                    )
+                    """.format(watermark_img=watermark_img)
             return css
 
         def _make_web_form_script():
@@ -1856,6 +1943,118 @@ for i, itm in enumerate(doc.{field.field_name}):
                         )
                 return script
 
+            def _make_readonly_trigger_for_child_tables(source_field: str):
+                """
+                Check if there are other fields that should reset their values when the value of this field changes
+                """
+                child_table_readonly_fields = [
+                    frappe._dict(x.__dict__)
+                    for x in self.read_only_fields_map
+                    if x.parent_field == source_field and x.is_target_a_child_table
+                ]
+                script = ""
+                if child_table_readonly_fields:
+                    target_field = child_table_readonly_fields[0].target_field
+                    doctype = child_table_readonly_fields[0].parent_doctype
+                    parent_field = child_table_readonly_fields[0].parent_field
+                    parent_fields = [
+                        x.parent_property for x in child_table_readonly_fields
+                    ]
+                    target_child_table_grid_doctype = child_table_readonly_fields[
+                        0
+                    ].target_child_table_doctype
+                    # readonly_filter = [readonly_fields[0].parent_doctype, 'name', '=', frappe.web_form.get_value(readonly_fields[0].parent_field)]
+                    script = """
+                    const child_table_readonly_fields={readonly_fields};
+                    // reset the dependent values
+                    for (var i = 0; i < child_table_readonly_fields.length; i++) {{  
+                        const target_field = readonly_fields[i].target_field;
+                        if(child_table_readonly_fields[i].is_target_a_child_table) {{
+                            frappe.web_form.set_value(target_field, []);
+                        }} else {{
+                            frappe.web_form.set_value(target_field, '');
+                        }}						
+                    }}""".format(
+                        parent_fields=parent_fields,
+                        parent_doctype=doctype,
+                        parent_field=parent_field,
+                        readonly_fields=child_table_readonly_fields,
+                    )
+
+                    if child_table_readonly_fields[0].is_target_a_child_table:
+                        script += """
+                            frappe.web_form.doc.{target_field} = []; // rest as we wait to load from backend
+                            frappe.web_form.doc.{target_field}.splice(0);
+                            const web_form_values = frappe.web_form.get_values(true, false);
+
+                            frappe.call({{
+                                method:"participatory_backend.api.get_list",
+                                args: {{
+                                    doctype: '{target_child_table_grid_doctype}',
+                                    filters: [
+                                                ['{target_child_table_grid_doctype}', 'parenttype', '=', '{parent_doctype}'],
+                                                ['{target_child_table_grid_doctype}', 'parent', '=', frappe.web_form.get_value('{parent_field}')],
+                                            ],
+                                    fields: {parent_fields},
+                                    limit_page_length: 0,
+                                    order_by: "idx",
+                                }},
+                                callback: (r) => {{
+                                    frappe.web_form.doc.{target_field} = [];
+                                    let items = [];
+                                    if (r.message) {{
+                                        items = r.message;  
+                                    }}
+                                    items.forEach((item) => {{
+                                        ['name', 'parent', 'parentfield', 'parenttype', 'doctype', 
+                                         'creation', 'owner', 'modified', 'modified_by', 'docstatus'].forEach((key) => {{
+                                            delete item[key]; // remove the values linked to source doc 
+                                        }});
+                                        item['__islocal'] = true;
+                                        item['row_name'] = `row ${{String(item.idx)}}`;
+                                        frappe.web_form.doc.{target_field}.push(item)
+                                    }});
+                                    frappe.web_form.get_field('{target_field}').refresh();
+                                
+                            }}
+                        }});
+                        """.format(
+                            parent_fields=["*"],
+                            parent_doctype=doctype,
+                            parent_field=parent_field,
+                            readonly_fields=child_table_readonly_fields,
+                            target_field=target_field,
+                            target_child_table_grid_doctype=target_child_table_grid_doctype,
+                        )
+                    else:
+                        script += """
+                            frappe.call({{
+                                method:"participatory_backend.api.get_list",
+                                args: {{
+                                    doctype: '{parent_doctype}',
+                                    filters: [['{parent_doctype}', 'name', '=', frappe.web_form.get_value('{parent_field}')]],
+                                    fields: {parent_fields},
+                                    limit_page_length: 0,
+                                    order_by: "name",
+                                }},
+                                callback: (r) => {{
+                                    if (r.message && r.message.length > 0) {{
+                                    for (var i = 0; i < readonly_fields.length; i++) {{  
+                                        const target_field = readonly_fields[i].target_field;
+                                        const val = r.message[0][readonly_fields[i].parent_property]
+                                        frappe.web_form.set_value(target_field, val);
+                                    }} 
+                                }}
+                            }}
+                        }});
+                        """.format(
+                            parent_fields=parent_fields,
+                            parent_doctype=doctype,
+                            parent_field=parent_field,
+                            readonly_fields=readonly_fields,
+                        )
+                return script
+
             def _make_filter_functions():
                 """
                 Make different functions to handle change of trigger fields
@@ -1904,11 +2103,22 @@ for i, itm in enumerate(doc.{field.field_name}):
                     link_source_fields = [
                         x.source_field for x in self.link_filters_map if x.source_field
                     ]
+
+                    # ignore linked fields that are not Table since Frappe already handles the Fetch From logic for non-table fields
                     read_only_source_fields = [
                         x.parent_field
                         for x in self.read_only_fields_map
-                        if x.parent_field
+                        if x.parent_field and x.is_target_a_child_table
                     ]
+                    if REPLACE_READONLY_FIELDTYPE_WITH_ORIGINAL_FIELDTYPE:
+                        # If we are replacing the ReadOnly fieldtype with the original fieldtype, then include all of them
+                        read_only_source_fields += [
+                            x.parent_field
+                            for x in self.read_only_fields_map
+                            if x.parent_field  # and x.is_target_a_child_table
+                        ]
+
+                    read_only_source_fields = list(set(read_only_source_fields))
                     # merge with source fields as a result of Read Only fields
                     source_fields = set(link_source_fields + read_only_source_fields)
 
@@ -1924,6 +2134,9 @@ for i, itm in enumerate(doc.{field.field_name}):
 
                         # make handler for ReadOnly values that depend on this source
                         readonly_script = _make_readonly_trigger(source_field=source)
+                        readonly_script += _make_readonly_trigger_for_child_tables(
+                            source_field=source
+                        )
                         field_scripts = (
                             _make_source_field_function(
                                 source_field_name=source,
@@ -2052,9 +2265,7 @@ for i, itm in enumerate(doc.{field.field_name}):
                             let fields = frappe.web_form.fields_dict.{table}.grid.df.fields;
                             for(var i=0; i < fields.length; i++){{
                                 let field = fields[i];
-                        """.format(
-                    table=table.field_name
-                )
+                        """.format(table=table.field_name)
                 if fields:
                     for fld in fields:
                         # get field index
@@ -2244,11 +2455,15 @@ def sanitize_web_filters(filters):
     return filters
 
 
-def convert_depends_on_conditions_to_js_format(
+def convert_conditions_to_js_py_format(
     conditions: list,
     ref_field: dict,
     ref_field_property: str,
+    ref_doctype: str,
     evaluation_criteria=AND_CONDITION_TEXT,
+    field_id_property: str = "field_name",
+    field_label_property: str = "field_label",
+    is_JS=True,
 ) -> str:
     """Convert filters entry as set by the Filters Dialog into js format i.e the format with eval:doc....
     Args:
@@ -2257,89 +2472,175 @@ def convert_depends_on_conditions_to_js_format(
     if len(conditions) <= 0:
         return ""
 
-    res = "eval:"
+    res = "eval:" if is_JS else ""
     for i, condition in enumerate(conditions):
         res += (
             "("
-            + construct_depends_on_js_expression(
-                condition, ref_field, ref_field_property
+            + construct_condition_to_expression(
+                condition,
+                ref_field,
+                ref_field_property,
+                ref_doctype,
+                field_id_property=field_id_property,
+                field_label_property=field_label_property,
+                is_JS=is_JS,
             )
             + ")"
         )
         if i != len(conditions) - 1:
-            res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
-
+            if is_JS:
+                res += " && " if evaluation_criteria == AND_CONDITION_TEXT else " || "
+            else:
+                res += " and " if evaluation_criteria == AND_CONDITION_TEXT else " or "
     return res
 
 
-def construct_depends_on_js_expression(
-    condition: list, ref_field: dict, ref_field_property: str
+def construct_condition_to_expression(
+    condition: list,
+    ref_field: dict,
+    ref_field_property: str,
+    ref_doctype: str,
+    field_id_property: str = "field_name",
+    field_label_property: str = "field_label",
+    is_JS=True,
 ) -> str:
-    """Construct a JS expression given a filter condition
+    """Construct a JS or Python expression given a filter condition
 
     Args:
-                    condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
+       condition (list): condition e.g ["Test Form Five","sample_gender","=","Male"]
     """
+
+    def _prefix(val, is_condition_value=False):
+        is_list = isinstance(val, list)
+        is_number = isinstance(val, int) or isinstance(val, float)
+        val = (
+            '"' + str(val) + '"'
+            if (is_condition_value and not is_list and not is_number)
+            else val
+        )
+        if docfield.fieldtype == "Date":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.getdate({val})"
+        if docfield.fieldtype == "Datetime":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.get_datetime({val})"
+        if docfield.fieldtype == "Time":
+            if is_JS:
+                return f"{val}"
+            else:
+                return f"frappe.utils.get_time({val})"
+
+        # if it is a condition value, enclose it in brackets
+        # if is_condition_value:
+        #     if isinstance(val, list):
+        #         return val
+        #     return '"' + val + '"'
+        return val
+
     if len(condition) < 4:  # condition has 4 parts
         return ""
 
     field = condition[1]
-    if field == ref_field.field_name:
+    # For name/ID field, construct a dummy object since there will be no docfield called `name`
+    docfield = (
+        frappe.get_meta(ref_doctype, True).get_field(field)
+        if field != "name"
+        else frappe._dict({"fieldtype": "Data"})
+    )
+    field_name = ref_field.get(field_id_property)
+    field_label = ref_field.get(field_label_property)
+    if field == field_name:
         frappe.throw(
-            f"Row {ref_field.idx}. {frappe.bold(ref_field.field_label)}. You cannot reference {frappe.bold(ref_field.field_name)} as a condition in {frappe.bold(ref_field_property)} property as you are self-referencing the same field. A field cannot depend on itself"
+            f"Row {ref_field.idx}. {frappe.bold(field_label)}. You cannot reference {frappe.bold(field_name)} as a condition in {frappe.bold(ref_field_property)} property as you are self-referencing the same field. A field cannot depend on itself"
         )
     operator = condition[2]
-    value = condition[3]
+    condition_value = condition[3]
     exp = ""
-    if isinstance(value, str) and value not in ["set", "not set"]:
-        value = '"' + value + '"'
+
+    # Prefix by Frappe functions where necessary
+    doc_value = _prefix(f"{DOC_PREFIX_FORMULA}{field}", is_condition_value=False)
+    value = _prefix(condition_value, is_condition_value=True)
+
+    # if isinstance(condition_value, str) and condition_value not in ["set", "not set"]:
+    #     value = '"' + value + '"'
 
     if operator == "=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}=={value}"
+        exp = f"{doc_value}=={value}"
 
     if operator == "!=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}!={value}"
+        exp = f"{doc_value}!={value}"
 
     if operator == "like":
-        exp = f"{DOC_PREFIX_FORMULA}{field}.indexOf({value}) != -1"
+        if is_JS:
+            exp = f"{doc_value}.indexOf({value}) != -1"
+        else:
+            exp = f"{value.lower()} in {doc_value}.lower()"
 
     if operator == "not like":
-        exp = f"{DOC_PREFIX_FORMULA}{field}.indexOf({value}) == -1"
+        if is_JS:
+            exp = f"{doc_value}.indexOf({value}) == -1"
+        else:
+            exp = f"{value.lower()} not in {doc_value}.lower()"
 
     if operator == "in":
-        exp += ""
-        for i, val in enumerate(value):
-            exp += f"{DOC_PREFIX_FORMULA}{field} == {val}"
-            if i != len(value) - 1:
-                exp += " || "
+        if is_JS:
+            exp += ""
+            for i, val in enumerate(value):
+                exp += f"{doc_value} == {val}"
+                if i != len(value) - 1:
+                    exp += " || "
+        else:
+            if isinstance(value, list):
+                exp = f"{doc_value} in {value}"
+            else:
+                exp = f"{value.lower()} in {doc_value}.lower()"
 
     if operator == "not in":
-        exp += ""
-        for i, val in enumerate(value):
-            exp += f"{DOC_PREFIX_FORMULA}{field} != {val}"
-            if i != len(value) - 1:
-                exp += " && "
+        if is_JS:
+            exp += ""
+            for i, val in enumerate(value):
+                exp += f"{doc_value} != {val}"
+                if i != len(value) - 1:
+                    exp += " && "
+        else:
+            if isinstance(value, list):
+                exp = f"{doc_value} not in {value}"
+            else:
+                exp = f"{value.lower()} not in {doc_value}.lower()"
 
     if operator == "is":
-        if value == "set":
-            exp = f"{DOC_PREFIX_FORMULA}{field}"
-        elif value == "not set":
-            exp = f"!{DOC_PREFIX_FORMULA}{field}"
+        if is_JS:
+            if condition_value == "set":
+                exp = f"{doc_value}"
+            elif condition_value == "not set":
+                exp = f"!{doc_value}"
+        else:
+            if condition_value == "set":
+                exp = f"{doc_value}"
+            elif condition_value == "not set":
+                exp = f"not {doc_value}"
 
     if operator == ">":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>{value}"
+        exp = f"{doc_value}>{value}"
 
     if operator == "<":
-        exp = f"{DOC_PREFIX_FORMULA}{field}<{value}"
+        exp = f"{doc_value}<{value}"
 
     if operator == ">=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>={value}"
+        exp = f"{doc_value}>={value}"
 
     if operator == "<=":
-        exp = f"{DOC_PREFIX_FORMULA}{field}<={value}"
+        exp = f"{doc_value}<={value}"
 
     if operator == "Between":
-        exp = f"{DOC_PREFIX_FORMULA}{field}>={value[0]} && {DOC_PREFIX_FORMULA}{field}<={value[1]}"
+        if is_JS:
+            exp = f"{doc_value}>={value[0]} && {doc_value}<={value[1]}"
+        else:
+            exp = f"{doc_value}>={value[0]} and {doc_value}<={value[1]}"
 
     if operator == "Timespan":
         pass

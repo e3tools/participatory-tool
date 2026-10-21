@@ -19,6 +19,9 @@ let UPDATEABLE_TYPES = [
   "Read Only",
 ];
 
+let INITIAL_FORM = "";
+let INITIAL_CONDITIONS = "";
+
 frappe.ui.form.on("Engagement Trigger", {
   onload(frm) {
     frm.set_query("print_format", function () {
@@ -31,6 +34,11 @@ frappe.ui.form.on("Engagement Trigger", {
 
     //hide whatsapp
     frm.set_df_property("via_whatsapp", "hidden", true);
+
+    // Get the values for currently loaded form
+    INITIAL_FORM = frm.doc.engagement_form;
+    INITIAL_CONDITIONS = frm.doc.conditions_plain;
+    frm.trigger("setup_skip_conditions");
   },
   refresh(frm) {
     frm.trigger("engagement_form");
@@ -44,6 +52,10 @@ frappe.ui.form.on("Engagement Trigger", {
         },
       };
     });
+
+    // if (frm.doc.engagement_form === INITIAL_FORM) {
+    //   INITIAL_CONDITIONS = frm.doc.conditions_plain;
+    // }
   },
   engagement_form: function (frm) {
     if (!frm.doc.engagement_form) {
@@ -198,6 +210,24 @@ frappe.ui.form.on("Engagement Trigger", {
         }
       },
     });
+  },
+  setup: function (frm) {
+    // frm.trigger("setup_skip_conditions");
+  },
+  setup_skip_conditions: function (frm) {
+    set_skip_logic_conditions(frm);
+  },
+  engagement_form: function (frm) {
+    // let conds =
+    //   frm.doc.engagement_form === INITIAL_FORM ? INITIAL_CONDITIONS : "";
+    // reset_conditions(frm);
+    // frappe.model.set_value(
+    //   frm.doc.doctype,
+    //   frm.doc.name,
+    //   "conditions_plain",
+    //   conds,
+    // );
+    // set_skip_logic_conditions(frm);
   },
 });
 
@@ -400,3 +430,96 @@ function make_field_display_value(df) {
 //         });
 //     }
 // });
+
+function reset_conditions(frm) {
+  let parent = frm.get_field("conditions_loading").$wrapper;
+  parent.empty();
+  frappe.model.set_value(frm.doctype, frm.docname, "conditions_plain", "");
+}
+
+function set_skip_logic_conditions(frm) {
+  let cdt = frm.doc.doctype;
+  let cdn = frm.doc.name;
+
+  function _set_conditions(filters_field_name, filters_loading_field_name) {
+    function _set_form_filter_values() {
+      let filters = filter_group.get_filters();
+      // each filter returns an list of arrays where each 5th item in the array says if the field is hidden or not.
+      // We need to remove the value of hidden property as they are not important in the backend context
+      filters = (filters || []).map((el) => {
+        return el.length == 5 ? el.slice(0, 4) : el;
+      });
+
+      frappe.model.set_value(
+        cdt,
+        cdn,
+        filters_field_name,
+        JSON.stringify(filters),
+      );
+    }
+    // let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
+    // if (!dialog) return;
+    let parent = frm.get_field(filters_loading_field_name).$wrapper;
+    parent.empty();
+
+    // let conds_field = frm.get_field(filters_field_name).$wrapper;
+    // conds_field.text("");
+
+    let filter_group = new frappe.ui.FilterGroup({
+      parent: parent,
+      doctype: frm.doc.engagement_form, // frm.doc.doctype, // frm.doc.name,
+      on_change: () => {
+        setTimeout(() => {
+          // Call this after a delay to ensure values reflect correctly
+          _set_form_filter_values();
+        }, 500);
+      },
+    });
+
+    const existing_filters = generate_filter_from_json(
+      frm,
+      frm.doc.doctype,
+      frm.doc.name,
+      filters_field_name,
+    );
+    if (existing_filters) {
+      if (existing_filters) {
+        filter_group.add_filters_to_filter_group(existing_filters);
+      }
+
+      frappe.model.set_value(
+        cdt,
+        cdn,
+        filters_field_name,
+        JSON.stringify(existing_filters),
+      );
+    }
+  }
+
+  // _create_filter_area();
+  if (frm.doc.engagement_form) {
+    frappe.model.with_doctype(frm.doc.engagement_form, () => {
+      _set_conditions("conditions_plain", "conditions_loading");
+      // _set_conditions(
+      //   "mandatory_depends_on_plain",
+      //   "mandatory_field_filters_loading",
+      // );
+      // _set_conditions(
+      //   "read_only_depends_on_plain",
+      //   "readonly_field_filters_loading",
+      // );
+    });
+  }
+}
+
+function generate_filter_from_json(frm, dt, dn, filters_field_name) {
+  let filters = [];
+  if (!frm.doc.__islocal && frm.doc.name) {
+    let child = locals[dt][dn];
+    filters = frappe.utils.get_filter_from_json(
+      child[filters_field_name],
+      frm.doc.doctype, //frm.doc.form_name
+    );
+  }
+  return filters;
+}

@@ -18,7 +18,8 @@ def execute():
             {
                 "naming_rule": (
                     "By Fieldname" if form.use_field_to_generate_id else "Autoname"
-                )
+                ),
+                "use_field_to_generate_id": 0,  # reset the use_field_to_generate_id value
             },
             None,
             update_modified=False,

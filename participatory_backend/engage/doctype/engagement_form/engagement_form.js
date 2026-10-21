@@ -171,8 +171,24 @@ frappe.ui.form.on("Engagement Form", {
       if (frm.doc.enable_web_form && !frm.doc.user_cannot_create) {
         frm.add_custom_button(
           __("Public View", [__(frm.doc.name)]),
-          () => {
-            window.open(`/${frappe.router.slug(frm.doc.route)}/new`);
+          async () => {
+            frappe.db.get_value(
+              "Engage Settings",
+              { name: "Engage Settings" },
+              ["preview_forms_in_mobile_app"],
+              (r) => {
+                if (r) {
+                  let isMobilePreview = r.preview_forms_in_mobile_app == "1";
+                  let url = `/${frappe.router.slug(frm.doc.route)}/new`;
+                  if (isMobilePreview) {
+                    if (frm.doc.mobile_preview_url) {
+                      url = `${frm.doc.mobile_preview_url}`;
+                    }
+                  }
+                  window.open(`${url}`, "_blank");
+                }
+              },
+            );
           },
           __("Actions"),
         );
@@ -238,6 +254,12 @@ frappe.ui.form.on("Engagement Form", {
     );
     frm.refresh_field("qr_code_preview");
   },
+  after_load(frm) {
+    set_name_field_options(frm);
+  },
+  after_save(frm) {
+    set_name_field_options(frm);
+  },
 });
 
 frappe.ui.form.on("Engagement Form Field", {
@@ -252,10 +274,140 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.trigger("setup_validations", cdt, cdn);
       frm.trigger("setup_link_field_filters", cdt, cdn);
     }
-    frm.trigger("make_additional_child_table_fields", cdt, cdn);
+    // frm.trigger("make_additional_child_table_fields", cdt, cdn);
     // frm.cur_grid
     //   .get_field("set_depends_on")
     //   .$wrapper.addClass("btn btn-outline-secondary");
+
+    let row = locals[cdt][cdn];
+    let wrapper = frm.cur_grid.get_field("formula_builder_html").wrapper;
+
+    $(wrapper).empty();
+
+    // let wrapper = frm.fields_dict['formula_builder_html'].wrapper;
+    //     $(wrapper).empty();
+
+    // Render clean markup with zero encoded parameter clutter
+    $(wrapper).html(`
+            <style>
+                .formula-canvas {
+                    background: #f8f9fa;
+                    border: 2px dashed #cbd5e1 !important;
+                    transition: all 0.2s ease-in-out;
+                }
+                .formula-canvas:hover {
+                    border-color: #94a3b8 !important;
+                }
+                .formula-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 6px 12px;
+                    border-radius: 50rem;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    transition: transform 0.1s ease;
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                }
+                .formula-chip:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+                }
+                .chip-field { /*border-left: 4px solid #3b82f6;*/ color: #1e40af; }
+                .chip-operator { /*border-left: 4px solid #f59e0b;*/ color: #b45309; font-weight: bold; }
+                .chip-number { border-left: 4px solid #10b981; color: #047857; }
+                .chip-delete {
+                    margin-left: 8px;
+                    color: #94a3b8;
+                    cursor: pointer;
+                    transition: color 0.15s;
+                }
+                .chip-delete:hover {
+                    color: #ef4444;
+                }
+            </style>
+
+            <div class="formula-builder-wrapper p-3 border rounded bg-white shadow-sm" 
+                 x-data="formulaBuilder('${cdt}', '${cdn}')">
+                 
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <label class="control-label font-weight-bold text-dark m-0">Visual Formula Builder</label>
+                    <button type="button" class="btn btn-xs btn-outline-danger" @click="clearTokens()" x-show="tokens.length > 0">
+                        <i class="fa fa-trash mr-1"></i> Clear Formula
+                    </button>
+                </div>
+                
+                <!-- 1. Selection Toolbars -->
+                <div class="mb-3 p-3 bg-light rounded border">
+                    <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Available Fields</span>
+                    <div class="d-flex flex-wrap gap-1 mb-3">
+                        <template x-for="field in fields" :key="field">
+                            <button type="button" class="btn btn-xs btn-outline-primary mb-1 mr-1" @click="addToken('field', field)">
+                                <i class="fa fa-database mr-1"></i><span x-text="field"></span>
+                            </button>
+                        </template>
+                    </div>
+
+                    <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Operators & Values</span>
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        <template x-for="op in operators" :key="op">
+                            <button type="button" class="btn btn-xs btn-secondary font-weight-bold mb-1 mr-1 px-2" @click="addToken('operator', op)" x-text="op"></button>
+                        </template>
+                        <button type="button" class="btn btn-xs btn-info mb-1 mr-1" @click="addNumberPrompt()">
+                            <i class="fa fa-hashtag mr-1"></i> Add Number
+                        </button>
+                        <button type="button" class="btn btn-xs btn-info mb-1 mr-1" @click="addTextPrompt()">
+                            <i class="fa fa-file-text mr-1"></i> Add Text
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. Polished Expression Canvas -->
+                <div class="formula-canvas p-3 rounded d-flex flex-wrap align-items-center gap-2 mb-3" style="min-height: 70px;">
+                    <template x-if="tokens.length === 0">
+                        <span class="text-muted font-italic text-sm">
+                            <i class="fa fa-info-circle mr-1"></i> Click fields, operators, or numbers above to construct your expression...
+                        </span>
+                    </template>
+                    <template x-for="(token, index) in tokens" :key="index">
+                        <div class="formula-chip mr-2 mb-2"
+                             :class="{
+                                 'chip-field': token.type === 'field',
+                                 'chip-operator': token.type === 'operator',
+                                 'chip-number': token.type === 'number'
+                             }">
+                            <i class="mr-1 text-xs" :class="{
+                                'fa fa-database': token.type === 'field',
+                                'fa fa-calculator': token.type === 'operator',
+                                'fa fa-hashtag': token.type === 'number'
+                            }"></i>
+                            <span x-text="token.value"></span>
+                            <i class="fa fa-times-circle chip-delete" @click="removeToken(index)" title="Remove"></i>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 3. Live Preview & Status Bar -->
+                <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border">
+                    <span class="text-xs text-muted font-weight-bold">Compiled: <code class="text-dark bg-white px-2 py-1 border rounded ml-1" x-text="compiledExpression || '(empty)'"></code></span>
+                    <button type="button" class="btn btn-xs btn-primary px-3" @click="testEvaluation()">
+                        <i class="fa fa-play mr-1"></i> Test Formula
+                    </button>
+                </div>
+                
+                <div class="mt-2" x-show="previewResult !== null" x-transition>
+                    <div class="alert mb-0 py-2 px-3 text-xs" :class="previewError ? 'alert-danger' : 'alert-success'" x-text="previewResult"></div>
+                </div>
+            </div>
+        `);
+    // Ensure Alpine loads and initializes the wrapper DOM node securely
+    load_alpine(() => {
+      register_formula_builder_component(frm);
+      if (window.Alpine && typeof window.Alpine.initTree === "function") {
+        window.Alpine.initTree(wrapper);
+      }
+    });
   },
   field_type: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -282,6 +434,10 @@ frappe.ui.form.on("Engagement Form Field", {
       frm.trigger("linked_form", cdt, cdn);
     }
     frm.trigger("layout_fields", cdt, cdn);
+    set_name_field_options(frm);
+  },
+  field_label: function (frm, cdt, cdn) {
+    set_name_field_options(frm);
   },
   linked_form: function (frm, cdt, cdn) {
     var child = locals[cdt][cdn];
@@ -593,6 +749,249 @@ frappe.ui.form.on("Engagement Form Field", {
   },
 });
 
+function register_formula_builder_component(frm) {
+  if (frm.doc.__islocal) {
+    return;
+  }
+  if (!window.Alpine) return;
+
+  // Register component safely if not already registered
+  if (!window.Alpine.data("formulaBuilder")) {
+    window.Alpine.data("formulaBuilder", (cdt, cdn) => ({
+      cdt: cdt,
+      cdn: cdn,
+      tokens: [],
+      fields: [],
+      operators: ["+", "-", "*", "/", "(", ")"],
+      previewResult: null,
+      previewError: false,
+
+      init() {
+        let row = locals[this.cdt][this.cdn] || {};
+        let available_fields = frm.doc.form_fields || [];
+
+        this.fields = available_fields
+          .filter((f) =>
+            ["Float", "Int", "Currency", "Percent", "Data", "Select"].includes(
+              f.field_type,
+            ),
+          )
+          .map((f) => f.field_name);
+
+        // let keys = Object.keys(row).filter(
+        //   (key) =>
+        //     ![
+        //       "name",
+        //       "owner",
+        //       "creation",
+        //       "modified",
+        //       "modified_by",
+        //       "parent",
+        //       "parentfield",
+        //       "parenttype",
+        //       "idx",
+        //       "docstatus",
+        //       "doctype",
+        //       "expression_json",
+        //       "formula_builder_html",
+        //     ].includes(key),
+        // );
+        // this.fields =
+        //   keys.length > 0
+        //     ? keys
+        //     : ["qty", "rate", "amount", "unit_price", "score"];
+
+        try {
+          this.tokens = row.expression_json
+            ? JSON.parse(row.expression_json)
+            : [];
+        } catch (e) {
+          this.tokens = [];
+        }
+      },
+
+      get compiledExpression() {
+        return this.tokens.map((t) => t.value).join(" ");
+      },
+
+      addToken(type, value) {
+        this.tokens.push({ type, value });
+        this.syncToFrappe();
+      },
+
+      addNumberPrompt() {
+        let val = prompt("Enter number value:");
+        if (val !== null && !isNaN(val)) {
+          this.tokens.push({ type: "number", value: val });
+          this.syncToFrappe();
+        }
+      },
+
+      addTextPrompt() {
+        let val = prompt("Enter text value:");
+        if (val !== null) {
+          this.tokens.push({ type: "string", value: '"' + val + '"' });
+          this.syncToFrappe();
+        }
+      },
+
+      removeToken(index) {
+        this.tokens.splice(index, 1);
+        this.syncToFrappe();
+      },
+
+      clearTokens() {
+        this.tokens = [];
+        this.previewResult = null;
+        this.syncToFrappe();
+      },
+
+      syncToFrappe() {
+        frappe.model.set_value(
+          this.cdt,
+          this.cdn,
+          "expression_json",
+          JSON.stringify(this.tokens),
+        );
+      },
+
+      testEvaluation() {
+        let row = locals[this.cdt][this.cdn];
+        frappe.call({
+          method: "participatory_backend.api.evaluate_formula",
+          args: {
+            formula_tokens: this.tokens,
+            row_data: row,
+            doctype: frm.doc.form_name, // Pass child DocType name for type validation
+            target_field: row.field_name,
+          },
+          callback: (r) => {
+            if (r.message && r.message.status === "success") {
+              let formula = null;
+              if (r.message.is_dry_run) {
+                this.previewResult = `✔ Valid Syntax! (Tested with mock values: ${r.message.result})`;
+                formula = r.message.formula;
+              } else {
+                this.previewResult = `✔ Evaluated Result: ${r.message.result}`;
+                formula = r.message.formula;
+                frappe.model.set_value(
+                  this.cdt,
+                  this.cdn,
+                  "derived_value",
+                  r.message.result,
+                );
+              }
+              this.previewError = false;
+
+              frappe.model.set_value(this.cdt, this.cdn, "formula", formula);
+            } else {
+              this.previewResult = `✖ ${r.message.message}`;
+              this.previewError = true;
+            }
+            /*
+            if (r.message && r.message.status === "success") {
+              this.previewResult = `Evaluated Result: ${r.message.result}`;
+              this.previewError = false;
+              frappe.model.set_value(
+                this.cdt,
+                this.cdn,
+                "derived_value",
+                r.message.result,
+              );
+            } else {
+              this.previewResult = `Error: ${r.message.message}`;
+              this.previewError = true;
+            }*/
+          },
+        });
+      },
+    }));
+  }
+}
+
+function get_alpine_template(cdt, cdn, row, available_fields) {
+  let initial_tokens = [];
+  try {
+    initial_tokens = row.expression_json ? JSON.parse(row.expression_json) : [];
+  } catch (e) {
+    initial_tokens = [];
+  }
+
+  let encoded_tokens = encodeURIComponent(JSON.stringify(initial_tokens));
+  let encoded_fields = encodeURIComponent(JSON.stringify(available_fields));
+
+  return `
+        <div class="formula-builder-wrapper p-3 border rounded bg-light" 
+             x-data="formulaBuilder('${cdt}', '${cdn}', '${encoded_tokens}', '${encoded_fields}')">
+             
+            <label class="control-label font-weight-bold mb-2 text-dark">Visual Formula Builder</label>
+            
+            <!-- 1. Selection Toolbars -->
+            <div class="mb-3">
+                <span class="text-muted d-block mb-1 font-xs">Available Fields:</span>
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    <template x-for="field in fields" :key="field">
+                        <button type="button" class="btn btn-xs btn-outline-primary mb-1 mr-1" @click="addToken('field', field)" x-text="field"></button>
+                    </template>
+                </div>
+
+                <span class="text-muted d-block mb-1 font-xs">Operators & Numbers:</span>
+                <div class="d-flex flex-wrap gap-1 align-items-center">
+                    <template x-for="op in operators" :key="op">
+                        <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mb-1 mr-1" @click="addToken('operator', op)" x-text="op"></button>
+                    </template>
+                    <button type="button" class="btn btn-xs btn-outline-success mb-1 mr-1" @click="addNumberPrompt()">+ Number</button>
+                    <button type="button" class="btn btn-xs btn-danger mb-1 ml-auto" @click="clearTokens()">Clear</button>
+                </div>
+            </div>
+
+            <!-- 2. Expression Canvas -->
+            <div class="expression-canvas p-2 bg-white border rounded d-flex flex-wrap align-items-center gap-1 min-h-40px mb-3" style="min-height: 50px;">
+                <template x-if="tokens.length === 0">
+                    <span class="text-muted font-italic font-xs">Click fields and operators above to build your formula...</span>
+                </template>
+                <template x-for="(token, index) in tokens" :key="index">
+                    <div class="badge badge-pill d-flex align-items-center p-2 mr-1 mb-1"
+                         :class="token.type === 'field' ? 'badge-primary' : (token.type === 'operator' ? 'badge-secondary' : 'badge-success')">
+                        <span x-text="token.value" class="mr-1"></span>
+                        <i class="fa fa-times-circle text-white cursor-pointer" @click="removeToken(index)"></i>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 3. Live Preview & Status Bar -->
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-xs text-muted">Expression: <code x-text="compiledExpression"></code></span>
+                <button type="button" class="btn btn-xs btn-info" @click="testEvaluation()">Test Formula</button>
+            </div>
+            
+            <div class="mt-2" x-show="previewResult !== null">
+                <span class="badge" :class="previewError ? 'badge-danger' : 'badge-success'" x-text="previewResult"></span>
+            </div>
+        </div>
+    `;
+}
+
+function load_alpine(callback) {
+  if (window.Alpine) {
+    callback();
+    return;
+  }
+  if (!document.getElementById("alpine-cdn")) {
+    let script = document.createElement("script");
+    script.id = "alpine-cdn";
+    script.src = "https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js";
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+  let checkInterval = setInterval(() => {
+    if (window.Alpine) {
+      clearInterval(checkInterval);
+      callback();
+    }
+  }, 50);
+}
+
 function set_skip_logic_conditions(frm, cdt, cdn) {
   function _set_conditions(filters_field_name, filters_loading_field_name) {
     let dialog = frm.fields_dict.form_fields.grid.open_grid_row;
@@ -774,6 +1173,7 @@ const set_title_field_options = function (frm) {
 const set_name_field_options = function (frm) {
   const val = frm.doc.naming_field;
   let label_val = "";
+  let id_val = "";
   let fields = [];
   frm.doc.form_fields?.forEach((field) => {
     if (ALLOWED_TITLE_FIELD_TYPES.includes(field.field_type)) {
@@ -785,18 +1185,26 @@ const set_name_field_options = function (frm) {
     }
     if (field.field_name === val) {
       label_val = field.field_label;
+      id_val = field.field_name;
     }
   });
+
   fields.sort((a, b) =>
     a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
+
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+
+  /*
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "naming_field",
     label_val,
-  );
+  );*/
+
+  frm.set_value("naming_field", label_val);
+  frm.set_value("naming_field", id_val);
 };
 
 const set_name_fields_in_grid = function (frm) {
@@ -884,12 +1292,16 @@ const set_name_fields_in_grid = function (frm) {
     a.label.toUpperCase() < b.label.toUpperCase() ? -1 : 1,
   );
   frm.set_df_property("naming_field", "options", fields, frm.doc.name);
+
+  /*
   frappe.model.set_value(
     frm.doc.doctype,
     frm.doc.name,
     "naming_field",
     label_val,
   );
+  */
+  frm.set_value("naming_field", label_val);
 };
 
 const get_linked_form_doctype = (frm, field_name) => {

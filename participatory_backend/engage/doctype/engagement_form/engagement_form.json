@@ -1,7 +1,7 @@
 {
  "actions": [],
  "autoname": "field:form_name",
- "creation": "2025-03-18 11:42:15.727746",
+ "creation": "2026-02-23 21:22:22.802610",
  "default_view": "List",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -40,6 +40,7 @@
   "column_break_qgzs",
   "web_title",
   "public_url",
+  "mobile_preview_url",
   "period_to_collect_data_section",
   "publish_start_date",
   "column_break_oqxz",
@@ -266,7 +267,7 @@
    "fieldname": "naming_field",
    "fieldtype": "Select",
    "label": "Field To Use As ID",
-   "mandatory_depends_on": "eval: (doc.use_field_to_generate_id || doc.naming_rule == \"By Fieldname\") && !doc.field_is_table"
+   "mandatory_depends_on": "eval: (/*doc.use_field_to_generate_id ||*/ doc.naming_rule == \"By Fieldname\") && !doc.field_is_table"
   },
   {
    "default": "0",
@@ -315,7 +316,7 @@
    "label": "End Date"
   },
   {
-   "default": "1",
+   "default": "0",
    "description": "If checked, users will be allowed to submit incomplete data",
    "fieldname": "allow_incomplete_form",
    "fieldtype": "Check",
@@ -381,6 +382,13 @@
    "label": "Fields To Use To Generate Record ID (Sequence Of The Fields Matters)",
    "mandatory_depends_on": "eval:doc.naming_rule == \"Custom\"",
    "options": "Engagement Form Name Field"
+  },
+  {
+   "depends_on": "eval:!doc.field_is_table && doc.enable_web_form",
+   "fieldname": "mobile_preview_url",
+   "fieldtype": "Data",
+   "label": "Mobile Preview URL",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -388,7 +396,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-23 21:14:48.207095",
+ "modified": "2026-10-15 12:32:20.140449",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",
