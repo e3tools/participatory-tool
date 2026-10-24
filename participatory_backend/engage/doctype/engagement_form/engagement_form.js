@@ -75,6 +75,15 @@ frappe.ui.form.on("Engagement Form", {
         },
       };
     });
+
+    frm.set_query("default_print_format", function () {
+      return {
+        filters: {
+          doc_type: frm.doc.name,
+          disabled: 0,
+        },
+      };
+    });
   },
   refresh(frm) {
     if (!frm.is_new() && !frm.doc.field_is_table) {
@@ -127,6 +136,35 @@ frappe.ui.form.on("Engagement Form", {
           },
           __("View"),
         );
+
+        frm.add_custom_button(
+          __("Print Layout", [__(frm.doc.name)]),
+          () => {
+            // frappe.set_route("custom-print-designer", {
+            //   doctype: frm.doc.name,
+            // });
+            // window.open(`/app/${frappe.router.slug(frm.doc.name)}/view/report`);
+
+            // Construct the URL with route options passed in the hash or query string
+            let designer_url = `/app/custom-print-designer?doctype=${encodeURIComponent(frm.doc.name)}`;
+
+            // Open in a new tab
+            window.open(designer_url, "_blank");
+          },
+          __("View"),
+        );
+
+        // frm.add_custom_button(
+        //   __("Design Print Layout"),
+        //   () => {
+        //     // Redirect or open a custom dialog/route pointing to the print view customization context
+        //     // window.open(
+        //     //   `/printview?doctype=${frm.doc.doctype}&name=${frm.doc.name}&format=Standard`,
+        //     // );
+        //     frappe.set_route("custom-print-designer", frm.doctype);
+        //   },
+        //   __("Print"),
+        // );
       }
     }
     if (!frm.is_new()) {

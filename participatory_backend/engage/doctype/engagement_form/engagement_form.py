@@ -28,6 +28,7 @@ from frappe.model.naming import make_autoname
 import random
 import string
 from frappe.core.doctype.doctype.doctype import DocType
+from frappe.printing.doctype.print_format.print_format import make_default
 
 SELECT_MULTIPLE = 1
 TABLE_MULTISELECT = 2
@@ -106,6 +107,7 @@ class EngagementForm(Document):
 
         allow_incomplete_form: DF.Check
         anonymous: DF.Check
+        default_print_format: DF.Link | None
         description: DF.TextEditor | None
         enable_web_form: DF.Check
         expression: DF.Data | None
@@ -193,6 +195,7 @@ class EngagementForm(Document):
             self.enable_web_form = False
         self.generate_image_fields()
         self.publish_form()
+        self.set_default_print_format()
 
     def validate_naming_field(self):
         """
@@ -2436,6 +2439,28 @@ for i, itm in enumerate(doc.{field.field_name}):
         else:
             remove_field("grant_data_processing_consent")
             remove_field("data_consent_statement")
+
+    def set_default_print_format(self):
+        # Check if Print Format belongs to the selected DocType
+        if self.default_print_format:
+            vals = frappe.db.get_value(
+                "Print Format",
+                self.default_print_format,
+                ["doc_type", "disabled"],
+                as_dict=True,
+            )
+            if vals:
+                dtype = vals.doc_type
+                if dtype != self.name:
+                    frappe.throw(
+                        _(
+                            "The selected default Print Format is not associated with the current Engagement Form"
+                        )
+                    )
+                if cint(vals.disabled):
+                    frappe.throw(_("The selected default Print Format is disabled"))
+
+            make_default(self.default_print_format)
 
 
 def sanitize_web_filters(filters):
