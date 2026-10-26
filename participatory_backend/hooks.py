@@ -155,6 +155,7 @@ doc_events = {
     "*": {
         # "after_insert": "participatory_backend.engage_trigger.triggers_util.run_triggers",
         "on_update": "participatory_backend.engage_trigger.triggers_util.run_triggers",
+        "before_save": "participatory_backend.utils.geolocation_image.handle_geolocation_image",
     },
 }
 
