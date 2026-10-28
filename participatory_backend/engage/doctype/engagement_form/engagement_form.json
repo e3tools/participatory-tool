@@ -17,6 +17,7 @@
   "use_field_to_generate_id",
   "naming_field",
   "naming_fields_grid",
+  "default_print_format",
   "column_break_ygly",
   "user_cannot_create",
   "description",
@@ -389,6 +390,12 @@
    "fieldtype": "Data",
    "label": "Mobile Preview URL",
    "read_only": 1
+  },
+  {
+   "fieldname": "default_print_format",
+   "fieldtype": "Link",
+   "label": "Default Print Format",
+   "options": "Print Format"
   }
  ],
  "grid_page_length": 50,
@@ -396,7 +403,7 @@
  "image_field": "qr_code",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-15 12:32:20.140449",
+ "modified": "2026-10-23 14:52:03.064674",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engagement Form",

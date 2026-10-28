@@ -846,3 +846,475 @@ def evaluate_formula(formula_tokens, row_data, doctype, target_field):
     from participatory_backend.utils.expression import evaluate_formula as evaluate
 
     return evaluate(formula_tokens, row_data, doctype, target_field)
+
+
+@frappe.whitelist()
+def save_custom_print_format(
+    doctype_name, format_name, layout_json, letter_head="", settings_json="{}"
+):
+    """
+    Saves the custom layout structure and generates a usable Jinja Print Format.
+    """
+    if not frappe.has_permission("Print Format", "create"):
+        frappe.throw("You do not have permission to design print formats")
+
+    layout = json.loads(layout_json)
+    settings = json.loads(settings_json)
+
+    # 1. Generate Jinja HTML from the dragged structure
+    jinja_html = render_layout_to_jinja(layout, letter_head, settings)
+
+    # 2. Save or Update Print Format DocType
+    if frappe.db.exists("Print Format", format_name):
+        doc = frappe.get_doc("Print Format", format_name)
+    else:
+        doc = frappe.new_doc("Print Format")
+        doc.name = format_name
+        doc.doc_type = doctype_name
+        doc.standard = "No"
+        doc.custom_format = 1
+        doc.print_format_type = "Jinja"
+
+    doc.html = jinja_html
+    doc.letter_head = letter_head
+    doc.disabled = settings.get("disabled", 0)
+    doc.margin_top = (
+        float(settings.get("margin_top")) if settings.get("margin_top") else None
+    )
+    doc.margin_bottom = (
+        float(settings.get("margin_bottom")) if settings.get("margin_bottom") else None
+    )
+    doc.margin_left = (
+        float(settings.get("margin_left")) if settings.get("margin_left") else None
+    )
+    doc.margin_right = (
+        float(settings.get("margin_right")) if settings.get("margin_right") else None
+    )
+    doc.page_number = settings.get("page_number") or ""
+    # Save raw JSON configuration into a custom/hidden field if you want to re-edit later
+    doc.raw_commands = layout_json
+    doc.save()
+
+    return {"status": "success", "format_name": doc.name}
+
+
+def get_style_string(style):
+    if not style:
+        return ""
+    css = []
+    if style.get("bold"):
+        css.append("font-weight: bold;")
+    if style.get("italic"):
+        css.append("font-style: italic;")
+    if style.get("underline"):
+        css.append("text-decoration: underline;")
+    if style.get("font_size"):
+        css.append(f"font-size: {style.get('font_size')};")
+    if style.get("color"):
+        css.append(f"color: {style.get('color')};")
+    return " ".join(css)
+
+
+def render_layout_to_jinja(layout, letter_head="", settings={}):
+    label_width = settings.get("label_width", "40")
+    value_width = 100 - int(label_width) if label_width.isdigit() else 60
+    page_number = settings.get("page_number", "")
+
+    html = ['<div class="print-format2">']
+
+    # Page Numbering injection CSS rule if enabled
+    if page_number:
+        pos_style = "position: running(footer);"
+        if "Top" in page_number:
+            pos_style = "position: running(header);"
+        html.append(f"""
+        <style>
+            @page {{
+                @bottom-right {{ content: counter(page) " of " counter(pages); }}
+            }}
+        </style>
+        """)
+
+    if letter_head:
+        html.append(
+            f'{{% include "templates/print_formats/standard_letter_head.html" %}}'
+        )
+
+    for item in layout:
+        item_type = item.get("type")
+        alignment = item.get("alignment", "Left").lower()
+        align_css = f"text-align: {alignment};"
+        style_css = get_style_string(item.get("style", {}))
+
+        if item_type == "heading":
+            text = item.get("text", "Heading")
+            html.append(
+                f'<h3 style="font-size: 16px; margin: 15px 0 5px 0; border-bottom: 1px solid #eee; padding-bottom: 4px; {align_css} {style_css}">{text}</h3>'
+            )
+
+        elif item_type == "html_block":
+            custom_html = item.get("html", "")
+            html.append(
+                f'<div style="margin: 15px 0; {align_css} {style_css}">{custom_html}</div>'
+            )
+
+        elif item_type == "qrcode_block":
+            config = item.get("config", {})
+            mode = config.get("mode")
+            if mode == "Combined Fields":
+                selected = config.get("selected_fields", [])
+                sep = config.get("separator", " - ")
+                combined_expr = f" {sep} ".join(
+                    [f'{{{{ doc.get("{f}") or "" }}}}' for f in selected]
+                )
+                qr_content = f'"{combined_expr}"'
+            elif mode == "Concatenated URL/Text":
+                tmpl = config.get("concat_template", "")
+                qr_content = f'"{tmpl}"'  # Jinja context evaluation template string
+            else:
+                qr_content = f"'{config.get('static_text', '')}'"
+
+            qr_text = config.get("qr_text", "")
+            qr_pos = config.get("qr_text_position", "Bottom")
+
+            img_tag = f'<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{{{ {qr_content} }}}}" style="width: 120px; height: 120px;" alt="QR Code"/>'
+            text_tag = f'<span style="{style_css}">{qr_text}</span>' if qr_text else ""
+
+            flex_dir = "column"
+            if qr_pos == "Left":
+                flex_dir = "row-reverse"
+            elif qr_pos == "Right":
+                flex_dir = "row"
+            elif qr_pos == "Top":
+                flex_dir = "column-reverse"
+
+            html.append(f"""
+            <div style="margin: 15px 0; {align_css} display: inline-flex; align-items: center; gap: 10px; flex-direction: {flex_dir};">
+                {img_tag}
+                {text_tag}
+            </div>
+            """)
+
+        elif item_type == "timestamp_block":
+            block_label = item.get("label", "Timestamp")
+            html.append(f"""
+            <div style="margin: 10px 0; {align_css} font-size: 13px; {style_css}">
+                <strong>{block_label}:</strong> {{{{ frappe.utils.now() }}}}
+            </div>
+            """)
+
+        elif item_type == "current_user_block":
+            block_label = item.get("label", "Current User")
+            html.append(f"""
+            <div style="margin: 10px 0; {align_css} font-size: 13px; {style_css}">
+                <strong>{block_label}:</strong> {{{{ frappe.session.user_fullname or frappe.session.user }}}}
+            </div>
+            """)
+
+        elif item_type in ["field", "table"]:
+            html.append(get_doc_field_html(item=item, settings=settings))
+
+            # f_name = item.get("fieldname")
+            # f_label = item.get("label", f_name)
+            # fieldtype = item.get("fieldtype", "Data")
+
+            # print("Field Type:", item.get("fieldtype"), ": Item Type:", item_type)
+
+            # if fieldtype == "Password":
+            #     val_snippet = f"{{% if doc.{f_name} %}}********{{% endif %}}"
+            # elif fieldtype == "Geolocation":
+            #     # Render geolocation safely checking GeoJSON or dictionary coordinates
+            #     val_snippet = f"{{{{ doc.{f_name} | string }}}}"
+            # elif fieldtype == "Signature":
+            #     # Render clean image tag for signature base64 value
+            #     # val_snippet = f'{{% if doc.{f_name} %}}<img src="{{{{ doc.{f_name} }}}}" style="max-height: 80px; object-fit: contain;" />{{% endif %}}'
+            #     val_snippet = f"""
+            #     {{% set sig = doc.get("{f_name}") %}}
+            #     {{% if sig %}}
+            #         {{% if sig.startswith("data:") %}}
+            #             <img src="{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+            #         {{% else %}}
+            #             <img src="data:image/png;base64,{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+            #         {{% endif %}}
+            #     {{% endif %}}
+            #     """
+
+            # elif fieldtype == "Rating":
+            #     # Render stars instead of numeric value
+            #     val_snippet = f"""
+            #     {{% set score = (doc.{f_name} | int) if doc.{f_name} else 0 %}}
+            #     <span style="color: #fbbf24; font-size: 16px;">
+            #         {{% for i in range(1, 6) %}}
+            #             {{% if i <= score %}}&#9733;{{% else %}}&#9734;{{% endif %}}
+            #         {{% endfor %}}
+            #     </span>
+            #     """
+            # else:
+            #     val_snippet = f'{{{{ doc.get_formatted("{f_name}") or "" }}}}'
+
+            # html.append(f"""
+            # <div style="display: flex; margin-bottom: 6px; font-size: 13px; {align_css}">
+            #     <div style="font-weight: bold; width: {label_width}%; color: #4a5568;">{f_label}:</div>
+            #     <div style="width: {value_width}%; color: #2d3748; {style_css}">{val_snippet}</div>
+            # </div>
+            # """)
+
+        elif item_type == "section":
+            title = item.get("label", "Section")
+            columns = item.get("columns", [[], []])
+
+            html.append(f"""
+            <div style="margin-top: 20px; margin-bottom: 15px; {align_css}">
+                <h4 style="font-size: 14px; font-weight: bold; color: #2d3748; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-bottom: 10px; {style_css}">{title}</h4>
+                <div style="display: flex; gap: 20px;">
+            """)
+
+            for col in columns:
+                html.append('<div style="flex: 1;">')
+                for field in col:
+                    fieldtype = field.get("fieldtype", "Data")
+                    f_type = field.get("type")
+                    f_name = field.get("fieldname")
+                    f_label = field.get("label", f_name)
+                    f_align = f"text-align: {field.get('alignment', 'Left').lower()};"
+                    f_style = get_style_string(field.get("style", {}))
+
+                    if f_type in [
+                        "field",
+                        "table",
+                    ]:
+                        html.append(get_doc_field_html(item=field, settings=settings))
+                        # if fieldtype == "Password":
+                        #     v_snippet = f"{{% if doc.{f_name} %}}********{{% endif %}}"
+
+                        # elif fieldtype == "Signature":
+                        #     # Render clean image tag for signature base64 value
+                        #     v_snippet = f"""
+                        #                 {{% set sig = doc.get("{f_name}") %}}
+                        #                 {{% if sig %}}
+                        #                     {{% if sig.startswith("data:") %}}
+                        #                         <img src="{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+                        #                     {{% else %}}
+                        #                         <img src="data:image/png;base64,{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+                        #                     {{% endif %}}
+                        #                 {{% endif %}}
+                        #                 """
+
+                        # elif fieldtype == "Rating":
+                        #     v_snippet = f"""
+                        #     {{% set score = (doc.{f_name} | int) if doc.{f_name} else 0 %}}
+                        #     <span style="color: #fbbf24; font-size: 16px;">
+                        #         {{% for i in range(1, 6) %}}
+                        #             {{% if i <= score %}}&#9733;{{% else %}}&#9734;{{% endif %}}
+                        #         {{% endfor %}}
+                        #     </span>
+                        #     """
+                        # else:
+                        #     v_snippet = f'{{{{ doc.get_formatted("{f_name}") or "" }}}}'
+
+                        # html.append(f"""
+                        # <div style="display: flex; margin-bottom: 6px; font-size: 13px; {f_align}">
+                        #     <div style="font-weight: bold; width: {label_width}%; color: #4a5568;">{f_label}:</div>
+                        #     <div style="width: {value_width}%; color: #2d3748; {f_style}">{v_snippet}</div>
+                        # </div>
+                        # """)
+                    elif f_type == "html_block":
+                        html.append(
+                            f'<div style="{f_align} {f_style}">{field.get("html", "")}</div>'
+                        )
+                html.append("</div>")
+
+            html.append("</div></div>")
+
+        elif item_type == "table":
+            table_field = item.get("fieldname")
+            label = item.get("label", "Items")
+            cols = item.get("columns", [])
+
+            if not cols:
+                # cols = [
+                #     {"fieldname": "item_code", "label": "Item Code"},
+                #     {"fieldname": "qty", "label": "Qty"},
+                #     {"fieldname": "amount", "label": "Amount"},
+                # ]
+                continue
+
+            table_head_html = "".join(
+                [
+                    f'<th style="border: 1px solid #cbd5e0; padding: 6px;">{col.get("label")}</th>'
+                    for col in cols
+                ]
+            )
+            table_body_cells = "".join(
+                [
+                    f'<td style="border: 1px solid #cbd5e0; padding: 6px;">{{{{ row.{col.get("fieldname")} or "" }}}}</td>'
+                    for col in cols
+                ]
+            )
+
+            html.append(f"""
+            <div style="margin-top: 25px; {align_css}">
+                <h4 style="font-size: 14px; margin-bottom: 8px; font-weight: bold; {style_css}">{label}</h4>
+                <table class="table table-bordered table-condensed" style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 0;">
+                    <thead>
+                        <tr style="background-color: #f7f7f7 !important;">
+                            <th style="border: 1px solid #cbd5e0; padding: 6px; width: 40px; text-align: center;">No.</th>
+                            {table_head_html}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{% for row in doc.{table_field} %}}
+                        <tr>
+                            <td style="border: 1px solid #cbd5e0; padding: 6px; text-align: center;">{{{{ loop.index }}}}</td>
+                            {table_body_cells}
+                        </tr>
+                        {{% endfor %}}
+                    </tbody>
+                </table>
+            </div>
+            """)
+
+        elif item_type == "spacer":
+            html.append('<div style="height: 15px;"></div>')
+
+    html.append("</div>")
+    return "\n".join(html)
+
+
+def get_doc_field_html(item, settings):
+    label_width = settings.get("label_width", "40")
+    value_width = 100 - int(label_width) if label_width.isdigit() else 60
+    item_type = item.get("type")
+    f_name = item.get("fieldname")
+    f_label = item.get("label", f_name)
+    fieldtype = item.get("fieldtype", "Data")
+    alignment = item.get("alignment", "Left").lower()
+    align_css = f"text-align: {alignment};"
+    style_css = get_style_string(item.get("style", {}))
+
+    val_snippet = ""
+    table_snippet = ""
+
+    print("Field Type:", item.get("fieldtype"), ": Item Type:", item_type)
+
+    if fieldtype == "Password":
+        val_snippet = f"{{% if doc.{f_name} %}}********{{% endif %}}"
+    elif fieldtype == "Geolocation":
+        # Render geolocation safely checking GeoJSON or dictionary coordinates
+        val_snippet = f"{{{{ doc.{f_name} | string }}}}"
+    elif fieldtype == "Signature":
+        # Render clean image tag for signature base64 value
+        # val_snippet = f'{{% if doc.{f_name} %}}<img src="{{{{ doc.{f_name} }}}}" style="max-height: 80px; object-fit: contain;" />{{% endif %}}'
+        val_snippet = f"""
+        {{% set sig = doc.get("{f_name}") %}}
+        {{% if sig %}}
+            {{% if sig.startswith("data:") %}}
+                <img src="{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+            {{% else %}}
+                <img src="data:image/png;base64,{{{{ sig }}}}" style="max-height: 80px; object-fit: contain;" />
+            {{% endif %}}
+        {{% endif %}}
+        """
+    elif fieldtype == "Rating":
+        # Render stars instead of numeric value
+        val_snippet = f"""
+        {{% set score = (doc.{f_name} | int) if doc.{f_name} else 0 %}}
+        <span style="color: #fbbf24; font-size: 16px;">
+            {{% for i in range(1, 6) %}}
+                {{% if i <= score %}}&#9733;{{% else %}}&#9734;{{% endif %}}
+            {{% endfor %}}
+        </span>
+        """
+    elif fieldtype in ["Attach", "Attach Image"]:
+        # This snippet checks if the file is private or public and resolves the correct path for web & PDF renderers
+        # {%# For private files in PDF generation, map to absolute site path or authenticated route #}
+        val_snippet = f"""
+            {{% set file_url = doc.get("{f_name}") %}}
+            {{% if file_url %}}
+                {{% set img_src = file_url %}}
+                {{% if file_url.startswith("/private/files/") %}} 
+                    {{% set img_src = frappe.utils.get_site_path() + file_url.replace("/private", "private") %}}
+                {{% endif %}}
+                <img src="{{{{ img_src }}}}" style="max-height: 400px; max-width: 100%; object-fit: contain;" />
+            {{% endif %}}
+            """
+
+    elif item_type == "table":
+        table_field = item.get("fieldname")
+        label = item.get("label", "Items")
+        cols = item.get("columns", [])
+
+        if not cols:
+            # cols = [
+            #     {"fieldname": "item_code", "label": "Item Code"},
+            #     {"fieldname": "qty", "label": "Qty"},
+            #     {"fieldname": "amount", "label": "Amount"},
+            # ]
+            return ""
+
+        table_head_html = "".join(
+            [
+                f'<th style="border: 1px solid #cbd5e0; padding: 6px;">{col.get("label")}</th>'
+                for col in cols
+            ]
+        )
+        table_body_cells = "".join(
+            [
+                f'<td style="border: 1px solid #cbd5e0; padding: 6px;">{{{{ row.{col.get("fieldname")} or "" }}}}</td>'
+                for col in cols
+            ]
+        )
+
+        table_snippet = f"""
+        <div style="margin-top: 25px; {align_css}">
+            <h4 style="font-size: 14px; margin-bottom: 8px; font-weight: bold; {style_css}">{label}</h4>
+            <table class="table table-bordered table-condensed" style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 0;">
+                <thead>
+                    <tr style="background-color: #f7f7f7 !important;">
+                        <th style="border: 1px solid #cbd5e0; padding: 6px; width: 40px; text-align: center;">No.</th>
+                        {table_head_html}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{% for row in doc.{table_field} %}}
+                    <tr>
+                        <td style="border: 1px solid #cbd5e0; padding: 6px; text-align: center;">{{{{ loop.index }}}}</td>
+                        {table_body_cells}
+                    </tr>
+                    {{% endfor %}}
+                </tbody>
+            </table>
+        </div>
+        """
+    else:
+        val_snippet = f'{{{{ doc.get_formatted("{f_name}") or "" }}}}'
+
+    if val_snippet:
+        return f"""
+                    <div style="display: flex; margin-bottom: 6px; font-size: 13px; {align_css}">
+                        <div style="font-weight: bold; width: {label_width}%; color: #4a5568;">{f_label}:</div>
+                        <div style="width: {value_width}%; color: #2d3748; {style_css}">{val_snippet}</div>
+                    </div>
+                    """
+    elif table_snippet:
+        return f"""
+                    <div style="margin-top: 25px; {align_css}">
+                        <h4 style="font-size: 14px; margin-bottom: 8px; font-weight: bold; {style_css}">{label}</h4>
+                        <table class="table table-bordered table-condensed" style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 0;">
+                            <thead>
+                                <tr style="background-color: #f7f7f7 !important;">
+                                    <th style="border: 1px solid #cbd5e0; padding: 6px; width: 40px; text-align: center;">No.</th>
+                                    {table_head_html}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{% for row in doc.{table_field} %}}
+                                <tr>
+                                    <td style="border: 1px solid #cbd5e0; padding: 6px; text-align: center;">{{{{ loop.index }}}}</td>
+                                    {table_body_cells}
+                                </tr>
+                                {{% endfor %}}
+                            </tbody>
+                        </table>
+                    </div>
+                    """

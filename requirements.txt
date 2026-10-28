@@ -4,3 +4,4 @@ matplotlib-inline==0.1.6
 mpl-toolkits.clifford==0.0.3
 deep_translator==1.11.4
 qrcode==8.0
+contextily==1.7.1
