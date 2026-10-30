@@ -217,7 +217,7 @@ frappe.ui.form.on("Engagement Trigger", {
   setup_skip_conditions: function (frm) {
     set_skip_logic_conditions(frm);
   },
-  engagement_form: function (frm) {
+  engagement_form2: function (frm) {
     // let conds =
     //   frm.doc.engagement_form === INITIAL_FORM ? INITIAL_CONDITIONS : "";
     // reset_conditions(frm);
