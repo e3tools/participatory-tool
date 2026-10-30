@@ -272,6 +272,7 @@ CUSTOM_ROLES = (
 )
 
 fixtures = [
+    {"doctype": "Workspace", "filters": [["module", "in", ["Engage"]]]},
     {
         "doctype": "Custom Field",
         "filters": [
