@@ -2543,6 +2543,9 @@ def construct_condition_to_expression(
             if (is_condition_value and not is_list and not is_number)
             else val
         )
+        if not docfield:
+            return val
+
         if docfield.fieldtype == "Date":
             if is_JS:
                 return f"{val}"
