@@ -281,11 +281,12 @@ frappe.ui.form.on("Engagement Trigger", {
     //   },
     // );
   },
+
   set_email_builder_async: function (frm) {
     // Ensure the JS asset is loaded
     frappe.require(
       "/assets/participatory_backend/js/email_builder.js",
-      "email_builder.js",
+      // "email_builder.js",
       function () {
         if (!frm.doc.engagement_form) {
           return;
@@ -676,20 +677,29 @@ class FrappeVisualEmailBuilder {
             label: "Document Link",
             icon: "🔗",
           },
-          {
-            jinja: "{{ frappe.session.user }}",
-            label: "Current User Email",
-            icon: "✉️",
-          },
-          {
-            jinja: "{{ frappe.user.full_name }}",
-            label: "Current User Full Name",
-            icon: "👤",
-          },
+          // {
+          //   // jinja: "{{ frappe.session.user }}",
+          //   jinja: "{{ frappe.get_doc('User', frappe.user).full_name }}",
+          //   label: "Current User Email",
+          //   icon: "✉️",
+          // },
+          // {
+          //   jinja:
+          //     // '{{ frappe.db.get_value("User", frappe.session.user, "full_name") }}',
+          //     //  '{{ frappe.get_doc("User", frappe.session.user).full_name }}',
+          //     "{{ frappe.get_fullname() }}",
+          //   label: "Current User Full Name",
+          //   icon: "👤",
+          // },
           {
             jinja: "{{ frappe.utils.nowdate() }}",
             label: "Current Date",
             icon: "📅",
+          },
+          {
+            jinja: "{{ frappe.utils.now() }}",
+            label: "Current Time",
+            icon: "⏰",
           },
         ],
         mockData: {
@@ -1486,7 +1496,7 @@ class FrappeVisualEmailBuilder {
     return html;
   }
 
-  setJinjaHTML(htmlContent) {
+  setJinjaHTML2(htmlContent) {
     if (!htmlContent) return;
     const blocksContainer = this.container.querySelector(
       "#veb-blocks-container",
@@ -1498,6 +1508,47 @@ class FrappeVisualEmailBuilder {
       const badgeHTML = `<span class="veb-inline-badge" contenteditable="false">${label}</span>`;
       processedHTML = processedHTML.replaceAll(jinjaTag, badgeHTML);
     });
+    this.addBlock("text", processedHTML);
+  }
+
+  setJinjaHTML(htmlContent) {
+    if (!htmlContent) return;
+    const blocksContainer = this.container.querySelector(
+      "#veb-blocks-container",
+    );
+    blocksContainer.innerHTML = "";
+
+    let processedHTML = htmlContent.trim();
+
+    // 1. Convert Jinja tags back to human-readable badge pills
+    Object.keys(this.badgeMap).forEach((label) => {
+      const jinjaTag = this.badgeMap[label];
+      const badgeHTML = `<span class="veb-inline-badge" contenteditable="false">${label}</span>`;
+      processedHTML = processedHTML.replaceAll(jinjaTag, badgeHTML);
+    });
+
+    // 2. Recursively strip outer template and block wrapper divs to prevent nesting loops
+    for (let i = 0; i < 20; i++) {
+      const trimmed = processedHTML.trim();
+      if (
+        (trimmed.startsWith('<div style="font-family: Arial') ||
+          trimmed.startsWith('<div style="margin-bottom:')) &&
+        trimmed.endsWith("</div>")
+      ) {
+        const firstCloseIdx = trimmed.indexOf(">");
+        if (firstCloseIdx !== -1) {
+          processedHTML = trimmed
+            .substring(firstCloseIdx + 1, trimmed.length - 6)
+            .trim();
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    // 3. Load the clean inner content into the rich text block
     this.addBlock("text", processedHTML);
   }
 
