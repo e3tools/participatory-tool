@@ -52,6 +52,7 @@
   "recipients",
   "message_section",
   "column_break_trxz",
+  "email_message_builder",
   "message",
   "message_examples",
   "printing_section",
@@ -368,12 +369,17 @@
   {
    "fieldname": "html_shjv",
    "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "email_message_builder",
+   "fieldtype": "HTML",
+   "label": "Email Message Builder"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-06 07:38:22.419048",
+ "modified": "2026-11-02 19:57:50.244941",
  "modified_by": "Administrator",
  "module": "Engage Trigger",
  "name": "Engagement Trigger",

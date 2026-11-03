@@ -56,6 +56,7 @@ frappe.ui.form.on("Engagement Trigger", {
     // if (frm.doc.engagement_form === INITIAL_FORM) {
     //   INITIAL_CONDITIONS = frm.doc.conditions_plain;
     // }
+    frm.trigger("set_email_builder");
   },
   engagement_form: function (frm) {
     if (!frm.doc.engagement_form) {
@@ -138,6 +139,8 @@ frappe.ui.form.on("Engagement Trigger", {
         }
       },
     });
+
+    frm.trigger("set_email_builder");
   },
   related_form: function (frm) {
     if (!frm.doc.related_form) {
@@ -228,6 +231,54 @@ frappe.ui.form.on("Engagement Trigger", {
     //   conds,
     // );
     // set_skip_logic_conditions(frm);
+  },
+  set_email_builder: function (frm) {
+    // Ensure the JS asset is loaded
+    frappe.require(
+      "/assets/participatory_backend/js/email_builder.js",
+      function () {
+        if (!frm.doc.engagement_form) {
+          return;
+        }
+
+        // 1. Prepare container inside Frappe HTML field
+        const wrapper = frm.fields_dict.email_message_builder.$wrapper;
+        wrapper.empty();
+        const container = $('<div id="email-builder-mount"></div>').appendTo(
+          wrapper,
+        );
+
+        // 2. Fetch DocType Meta dynamically to populate field catalog
+        frappe.model.with_doctype(frm.doc.engagement_form, function () {
+          const meta = frappe.get_meta(frm.doc.engagement_form);
+          const docfields = meta.fields
+            .filter(
+              (df) =>
+                !["Section Break", "Column Break", "HTML", "Table"].includes(
+                  df.fieldtype,
+                ),
+            )
+            .map((df) => ({
+              fieldname: df.fieldname,
+              label: df.label || df.fieldname,
+              fieldtype: df.fieldtype,
+            }));
+
+          // 3. Initialize Visual Builder
+          frm.email_builder = new FrappeVisualEmailBuilder(container[0], {
+            doctype: frm.doc.engagement_form,
+            docfields: docfields,
+            initialSubject: frm.doc.subject || "",
+            initialContent: frm.doc.message || "",
+            onChange: function (vals) {
+              // Automatically update hidden response_html field in Frappe
+              frm.set_value("message", vals.message);
+              frm.set_value("subject", vals.subject);
+            },
+          });
+        });
+      },
+    );
   },
 });
 
@@ -361,6 +412,7 @@ function make_recipient_fields(frm, fields) {
         let child_fields = frappe.get_doc("DocType", d.options).fields;
         return $.map(child_fields || [], function (df) {
           return df.options == "Email" ||
+            df.fieldtype == "Read Only" || // include read only fields as some might include emails
             (df.options == "User" && df.fieldtype == "Link")
             ? get_select_options(df, d.fieldname)
             : null;
