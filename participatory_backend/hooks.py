@@ -24,7 +24,10 @@ add_to_apps_screen = [
 # app_include_css = "/assets/participatory_backend/css/participatory_backend.css"
 # app_include_js = "/assets/participatory_backend/js/participatory_backend.js"
 
-app_include_js = ["/assets/participatory_backend/js/alpine.min.js"]
+app_include_js = [
+    # "/assets/participatory_backend/js/alpine.min.js"
+    "https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+]
 
 
 # include js, css files in header of web template
