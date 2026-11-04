@@ -1178,7 +1178,7 @@ for i, itm in enumerate(doc.{field.field_name}):
         ]
         if not parent_field:
             frappe.throw(
-                f"Field {field.label}. The linked form field [{field.linked_form}] specified does not exist"
+                f"Field {field.field_label}. The linked form field [{field.linked_form}] specified does not exist"
             )
         parent_field = parent_field[0]
         form = frappe.get_doc("DocType", parent_field.field_doctype)
