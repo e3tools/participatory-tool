@@ -1177,7 +1177,9 @@ for i, itm in enumerate(doc.{field.field_name}):
             x for x in self.form_fields if x.field_name == field.linked_form
         ]
         if not parent_field:
-            frappe.throw("Row {0}. The linked form field specified does not exist")
+            frappe.throw(
+                f"Field {field.label}. The linked form field [{field.linked_form}] specified does not exist"
+            )
         parent_field = parent_field[0]
         form = frappe.get_doc("DocType", parent_field.field_doctype)
         # check if the linked field in the form is of type Table
