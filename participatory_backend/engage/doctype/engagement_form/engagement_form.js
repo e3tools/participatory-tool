@@ -320,12 +320,8 @@ frappe.ui.form.on("Engagement Form Field", {
     let row = locals[cdt][cdn];
     let wrapper = frm.cur_grid.get_field("formula_builder_html").wrapper;
 
-    $(wrapper).empty();
+    // $(wrapper).empty();
 
-    // let wrapper = frm.fields_dict['formula_builder_html'].wrapper;
-    //     $(wrapper).empty();
-
-    // Render clean markup with zero encoded parameter clutter
     $(wrapper).html(`
             <style>
                 .formula-canvas {
@@ -355,6 +351,7 @@ frappe.ui.form.on("Engagement Form Field", {
                 .chip-field { /*border-left: 4px solid #3b82f6;*/ color: #1e40af; }
                 .chip-operator { /*border-left: 4px solid #f59e0b;*/ color: #b45309; font-weight: bold; }
                 .chip-number { border-left: 4px solid #10b981; color: #047857; }
+                .chip-function { border-left: 4px solid #8b5cf6; color: #6d28d9; font-weight: bold; }
                 .chip-delete {
                     margin-left: 8px;
                     color: #94a3b8;
@@ -366,16 +363,16 @@ frappe.ui.form.on("Engagement Form Field", {
                 }
             </style>
 
-            <div class="formula-builder-wrapper p-3 border rounded bg-white shadow-sm" 
+            <div class="formula-builder-wrapper p-3 border rounded bg-white shadow-sm"
                  x-data="formulaBuilder('${cdt}', '${cdn}')">
-                 
+
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <label class="control-label font-weight-bold text-dark m-0">Visual Formula Builder</label>
                     <button type="button" class="btn btn-xs btn-outline-danger" @click="clearTokens()" x-show="tokens.length > 0">
                         <i class="fa fa-trash mr-1"></i> Clear Formula
                     </button>
                 </div>
-                
+
                 <!-- 1. Selection Toolbars -->
                 <div class="mb-3 p-3 bg-light rounded border">
                     <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Available Fields</span>
@@ -388,7 +385,7 @@ frappe.ui.form.on("Engagement Form Field", {
                     </div>
 
                     <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Operators & Values</span>
-                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                    <div class="d-flex flex-wrap gap-1 align-items-center mb-2">
                         <template x-for="op in operators" :key="op">
                             <button type="button" class="btn btn-xs btn-secondary font-weight-bold mb-1 mr-1 px-2" @click="addToken('operator', op)" x-text="op"></button>
                         </template>
@@ -398,6 +395,13 @@ frappe.ui.form.on("Engagement Form Field", {
                         <button type="button" class="btn btn-xs btn-info mb-1 mr-1" @click="addTextPrompt()">
                             <i class="fa fa-file-text mr-1"></i> Add Text
                         </button>
+                    </div>
+
+                    <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Date & Time Functions</span>
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        <template x-for="fn in dateFunctions" :key="fn">
+                            <button type="button" class="btn btn-xs btn-outline-purple mb-1 mr-1" style="border-color: #8b5cf6; color: #6d28d9;" @click="addFunctionWithPrompt(fn)" x-text="fn"></button>
+                        </template>
                     </div>
                 </div>
 
@@ -413,12 +417,14 @@ frappe.ui.form.on("Engagement Form Field", {
                              :class="{
                                  'chip-field': token.type === 'field',
                                  'chip-operator': token.type === 'operator',
-                                 'chip-number': token.type === 'number'
+                                 'chip-number': token.type === 'number',
+                                 'chip-function': token.type === 'function'
                              }">
                             <i class="mr-1 text-xs" :class="{
                                 'fa fa-database': token.type === 'field',
                                 'fa fa-calculator': token.type === 'operator',
-                                'fa fa-hashtag': token.type === 'number'
+                                'fa fa-hashtag': token.type === 'number',
+                                'fa fa-clock-o': token.type === 'function'
                             }"></i>
                             <span x-text="token.value"></span>
                             <i class="fa fa-times-circle chip-delete" @click="removeToken(index)" title="Remove"></i>
@@ -433,12 +439,131 @@ frappe.ui.form.on("Engagement Form Field", {
                         <i class="fa fa-play mr-1"></i> Test Formula
                     </button>
                 </div>
-                
+
                 <div class="mt-2" x-show="previewResult !== null" x-transition>
                     <div class="alert mb-0 py-2 px-3 text-xs" :class="previewError ? 'alert-danger' : 'alert-success'" x-text="previewResult"></div>
                 </div>
             </div>
         `);
+
+    // let wrapper = frm.fields_dict['formula_builder_html'].wrapper;
+    //     $(wrapper).empty();
+
+    // Render clean markup with zero encoded parameter clutter
+    // $(wrapper).html(`
+    //         <style>
+    //             .formula-canvas {
+    //                 background: #f8f9fa;
+    //                 border: 2px dashed #cbd5e1 !important;
+    //                 transition: all 0.2s ease-in-out;
+    //             }
+    //             .formula-canvas:hover {
+    //                 border-color: #94a3b8 !important;
+    //             }
+    //             .formula-chip {
+    //                 display: inline-flex;
+    //                 align-items: center;
+    //                 padding: 6px 12px;
+    //                 border-radius: 50rem;
+    //                 font-size: 0.85rem;
+    //                 font-weight: 500;
+    //                 box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    //                 transition: transform 0.1s ease;
+    //                 background: #ffffff;
+    //                 border: 1px solid #e2e8f0;
+    //             }
+    //             .formula-chip:hover {
+    //                 transform: translateY(-1px);
+    //                 box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+    //             }
+    //             .chip-field { /*border-left: 4px solid #3b82f6;*/ color: #1e40af; }
+    //             .chip-operator { /*border-left: 4px solid #f59e0b;*/ color: #b45309; font-weight: bold; }
+    //             .chip-number { border-left: 4px solid #10b981; color: #047857; }
+    //             .chip-delete {
+    //                 margin-left: 8px;
+    //                 color: #94a3b8;
+    //                 cursor: pointer;
+    //                 transition: color 0.15s;
+    //             }
+    //             .chip-delete:hover {
+    //                 color: #ef4444;
+    //             }
+    //         </style>
+
+    //         <div class="formula-builder-wrapper p-3 border rounded bg-white shadow-sm"
+    //              x-data="formulaBuilder('${cdt}', '${cdn}')">
+
+    //             <div class="d-flex justify-content-between align-items-center mb-3">
+    //                 <label class="control-label font-weight-bold text-dark m-0">Visual Formula Builder</label>
+    //                 <button type="button" class="btn btn-xs btn-outline-danger" @click="clearTokens()" x-show="tokens.length > 0">
+    //                     <i class="fa fa-trash mr-1"></i> Clear Formula
+    //                 </button>
+    //             </div>
+
+    //             <!-- 1. Selection Toolbars -->
+    //             <div class="mb-3 p-3 bg-light rounded border">
+    //                 <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Available Fields</span>
+    //                 <div class="d-flex flex-wrap gap-1 mb-3">
+    //                     <template x-for="field in fields" :key="field">
+    //                         <button type="button" class="btn btn-xs btn-outline-primary mb-1 mr-1" @click="addToken('field', field)">
+    //                             <i class="fa fa-database mr-1"></i><span x-text="field"></span>
+    //                         </button>
+    //                     </template>
+    //                 </div>
+
+    //                 <span class="text-muted text-uppercase font-xs font-weight-bold d-block mb-1">Operators & Values</span>
+    //                 <div class="d-flex flex-wrap gap-1 align-items-center">
+    //                     <template x-for="op in operators" :key="op">
+    //                         <button type="button" class="btn btn-xs btn-secondary font-weight-bold mb-1 mr-1 px-2" @click="addToken('operator', op)" x-text="op"></button>
+    //                     </template>
+    //                     <button type="button" class="btn btn-xs btn-info mb-1 mr-1" @click="addNumberPrompt()">
+    //                         <i class="fa fa-hashtag mr-1"></i> Add Number
+    //                     </button>
+    //                     <button type="button" class="btn btn-xs btn-info mb-1 mr-1" @click="addTextPrompt()">
+    //                         <i class="fa fa-file-text mr-1"></i> Add Text
+    //                     </button>
+    //                 </div>
+    //             </div>
+
+    //             <!-- 2. Polished Expression Canvas -->
+    //             <div class="formula-canvas p-3 rounded d-flex flex-wrap align-items-center gap-2 mb-3" style="min-height: 70px;">
+    //                 <template x-if="tokens.length === 0">
+    //                     <span class="text-muted font-italic text-sm">
+    //                         <i class="fa fa-info-circle mr-1"></i> Click fields, operators, or numbers above to construct your expression...
+    //                     </span>
+    //                 </template>
+    //                 <template x-for="(token, index) in tokens" :key="index">
+    //                     <div class="formula-chip mr-2 mb-2"
+    //                          :class="{
+    //                              'chip-field': token.type === 'field',
+    //                              'chip-operator': token.type === 'operator',
+    //                              'chip-number': token.type === 'number'
+    //                          }">
+    //                         <i class="mr-1 text-xs" :class="{
+    //                             'fa fa-database': token.type === 'field',
+    //                             'fa fa-calculator': token.type === 'operator',
+    //                             'fa fa-hashtag': token.type === 'number'
+    //                         }"></i>
+    //                         <span x-text="token.value"></span>
+    //                         <i class="fa fa-times-circle chip-delete" @click="removeToken(index)" title="Remove"></i>
+    //                     </div>
+    //                 </template>
+    //             </div>
+
+    //             <!-- 3. Live Preview & Status Bar -->
+    //             <div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border">
+    //                 <span class="text-xs text-muted font-weight-bold">Compiled: <code class="text-dark bg-white px-2 py-1 border rounded ml-1" x-text="compiledExpression || '(empty)'"></code></span>
+    //                 <button type="button" class="btn btn-xs btn-primary px-3" @click="testEvaluation()">
+    //                     <i class="fa fa-play mr-1"></i> Test Formula
+    //                 </button>
+    //             </div>
+
+    //             <div class="mt-2" x-show="previewResult !== null" x-transition>
+    //                 <div class="alert mb-0 py-2 px-3 text-xs" :class="previewError ? 'alert-danger' : 'alert-success'" x-text="previewResult"></div>
+    //             </div>
+    //         </div>
+    //     `);
+
     // Ensure Alpine loads and initializes the wrapper DOM node securely
     load_alpine(() => {
       register_formula_builder_component(frm);
@@ -800,7 +925,9 @@ function register_formula_builder_component(frm) {
       cdn: cdn,
       tokens: [],
       fields: [],
-      operators: ["+", "-", "*", "/", "(", ")"],
+      operators: ["+", "-", "*", "/", "(", ")", ">", "<", "=="],
+      // dateFunctions: ["date_diff", "add_days", "today"],
+      dateFunctions: [], //   ["date_diff(", "add_days(", "today()"], // Disable this one for now until we have enough time to implement it
       previewResult: null,
       previewError: false,
 
@@ -808,11 +935,236 @@ function register_formula_builder_component(frm) {
         let row = locals[this.cdt][this.cdn] || {};
         let available_fields = frm.doc.form_fields || [];
 
+        // // Fetch fields dynamically from child meta if available, else fallback to keys
+        //       let meta = frappe.get_meta(this.cdt);
+        //       let valid_fields = [];
+
+        //       if (meta && meta.fields) {
+        //           valid_fields = meta.fields
+        //               .filter(f => !['expression_json', 'formula_builder_html', 'derived_value'].includes(f.fieldname))
+        //               .map(f => f.fieldname);
+        //       } else {
+        //           valid_fields = Object.keys(row).filter(key =>
+        //               !['name', 'owner', 'creation', 'modified', 'modified_by', 'parent', 'parentfield', 'parenttype', 'idx', 'docstatus', 'doctype', 'expression_json', 'formula_builder_html'].includes(key)
+        //           );
+        //       }
+
         this.fields = available_fields
           .filter((f) =>
-            ["Float", "Int", "Currency", "Percent", "Data", "Select"].includes(
-              f.field_type,
-            ),
+            [
+              "Float",
+              "Int",
+              "Currency",
+              "Percent",
+              "Data",
+              "Select",
+              "Date",
+              "Datetime",
+              "Time",
+            ].includes(f.field_type),
+          )
+          .map((f) => f.field_name);
+
+        // let keys = Object.keys(row).filter(
+        //   (key) =>
+        //     ![
+        //       "name",
+        //       "owner",
+        //       "creation",
+        //       "modified",
+        //       "modified_by",
+        //       "parent",
+        //       "parentfield",
+        //       "parenttype",
+        //       "idx",
+        //       "docstatus",
+        //       "doctype",
+        //       "expression_json",
+        //       "formula_builder_html",
+        //     ].includes(key),
+        // );
+        // this.fields =
+        //   keys.length > 0
+        //     ? keys
+        //     : ["qty", "rate", "amount", "unit_price", "score"];
+
+        try {
+          this.tokens = row.expression_json
+            ? JSON.parse(row.expression_json)
+            : [];
+        } catch (e) {
+          this.tokens = [];
+        }
+      },
+
+      get compiledExpression() {
+        return this.tokens.map((t) => t.value).join(" ");
+      },
+
+      addToken(type, value) {
+        this.tokens.push({ type, value });
+        this.syncToFrappe();
+      },
+
+      addNumberPrompt() {
+        let val = prompt("Enter number value:");
+        if (val !== null && !isNaN(val)) {
+          this.tokens.push({ type: "number", value: val });
+          this.syncToFrappe();
+        }
+      },
+
+      addTextPrompt() {
+        let val = prompt("Enter text value:");
+        if (val !== null) {
+          this.tokens.push({ type: "string", value: '"' + val + '"' });
+          this.syncToFrappe();
+        }
+      },
+
+      addFunctionWithPrompt(fnName) {
+        if (fnName === "today") {
+          this.tokens.push({ type: "function", value: "today()" });
+          this.syncToFrappe();
+        } else if (fnName === "add_days") {
+          let dateField = prompt(
+            "Enter base date field name (e.g., start_date):",
+          );
+          if (!dateField) return;
+          let daysNum = prompt(
+            "Enter number of days to add (e.g., 5 or -5):",
+            "0",
+          );
+          if (daysNum === null || isNaN(daysNum)) return;
+
+          let expr = `add_days(${dateField.trim()}, ${daysNum.trim()})`;
+          this.tokens.push({ type: "function", value: expr });
+          this.syncToFrappe();
+        } else if (fnName === "date_diff") {
+          let endDateField = prompt(
+            "Enter end date field name (e.g., end_date):",
+          );
+          if (!endDateField) return;
+          let startDateField = prompt(
+            "Enter start date field name (e.g., start_date):",
+          );
+          if (!startDateField) return;
+
+          let expr = `date_diff(${endDateField.trim()}, ${startDateField.trim()})`;
+          this.tokens.push({ type: "function", value: expr });
+          this.syncToFrappe();
+        }
+      },
+
+      removeToken(index) {
+        this.tokens.splice(index, 1);
+        this.syncToFrappe();
+      },
+
+      clearTokens() {
+        this.tokens = [];
+        this.previewResult = null;
+        this.syncToFrappe();
+      },
+
+      syncToFrappe() {
+        frappe.model.set_value(
+          this.cdt,
+          this.cdn,
+          "expression_json",
+          JSON.stringify(this.tokens),
+        );
+      },
+
+      testEvaluation() {
+        let row = locals[this.cdt][this.cdn];
+        frappe.call({
+          method: "participatory_backend.api.evaluate_formula",
+          args: {
+            formula_tokens: this.tokens,
+            row_data: row,
+            doctype: frm.doc.form_name, // Pass child DocType name for type validation
+            target_field: row.field_name,
+          },
+          callback: (r) => {
+            if (r.message && r.message.status === "success") {
+              let formula = null;
+              if (r.message.is_dry_run) {
+                this.previewResult = `✔ Valid Syntax! (Tested with mock values: ${r.message.result})`;
+                formula = r.message.formula;
+              } else {
+                this.previewResult = `✔ Evaluated Result: ${r.message.result}`;
+                formula = r.message.formula;
+                frappe.model.set_value(
+                  this.cdt,
+                  this.cdn,
+                  "derived_value",
+                  r.message.result,
+                );
+              }
+              this.previewError = false;
+
+              frappe.model.set_value(this.cdt, this.cdn, "formula", formula);
+            } else {
+              this.previewResult = `✖ ${r.message.message}`;
+              this.previewError = true;
+            }
+          },
+        });
+      },
+    }));
+  }
+}
+
+function register_formula_builder_component2(frm) {
+  if (frm.doc.__islocal) {
+    return;
+  }
+  if (!window.Alpine) return;
+
+  // Register component safely if not already registered
+  if (!window.Alpine.data("formulaBuilder")) {
+    window.Alpine.data("formulaBuilder", (cdt, cdn) => ({
+      cdt: cdt,
+      cdn: cdn,
+      tokens: [],
+      fields: [],
+      operators: ["+", "-", "*", "/", "(", ")", ">", "<", "=="],
+      dateFunctions: [], //   ["date_diff(", "add_days(", "today()"], // Disable this one for now until we have enough time to implement it
+      previewResult: null,
+      previewError: false,
+
+      init() {
+        let row = locals[this.cdt][this.cdn] || {};
+        let available_fields = frm.doc.form_fields || [];
+
+        // // Fetch fields dynamically from child meta if available, else fallback to keys
+        //       let meta = frappe.get_meta(this.cdt);
+        //       let valid_fields = [];
+
+        //       if (meta && meta.fields) {
+        //           valid_fields = meta.fields
+        //               .filter(f => !['expression_json', 'formula_builder_html', 'derived_value'].includes(f.fieldname))
+        //               .map(f => f.fieldname);
+        //       } else {
+        //           valid_fields = Object.keys(row).filter(key =>
+        //               !['name', 'owner', 'creation', 'modified', 'modified_by', 'parent', 'parentfield', 'parenttype', 'idx', 'docstatus', 'doctype', 'expression_json', 'formula_builder_html'].includes(key)
+        //           );
+        //       }
+
+        this.fields = available_fields
+          .filter((f) =>
+            [
+              "Float",
+              "Int",
+              "Currency",
+              "Percent",
+              "Data",
+              "Select",
+              "Date",
+              "Datetime",
+              "Time",
+            ].includes(f.field_type),
           )
           .map((f) => f.field_name);
 
@@ -947,68 +1299,68 @@ function register_formula_builder_component(frm) {
   }
 }
 
-function get_alpine_template(cdt, cdn, row, available_fields) {
-  let initial_tokens = [];
-  try {
-    initial_tokens = row.expression_json ? JSON.parse(row.expression_json) : [];
-  } catch (e) {
-    initial_tokens = [];
-  }
+// function get_alpine_template(cdt, cdn, row, available_fields) {
+//   let initial_tokens = [];
+//   try {
+//     initial_tokens = row.expression_json ? JSON.parse(row.expression_json) : [];
+//   } catch (e) {
+//     initial_tokens = [];
+//   }
 
-  let encoded_tokens = encodeURIComponent(JSON.stringify(initial_tokens));
-  let encoded_fields = encodeURIComponent(JSON.stringify(available_fields));
+//   let encoded_tokens = encodeURIComponent(JSON.stringify(initial_tokens));
+//   let encoded_fields = encodeURIComponent(JSON.stringify(available_fields));
 
-  return `
-        <div class="formula-builder-wrapper p-3 border rounded bg-light" 
-             x-data="formulaBuilder('${cdt}', '${cdn}', '${encoded_tokens}', '${encoded_fields}')">
-             
-            <label class="control-label font-weight-bold mb-2 text-dark">Visual Formula Builder</label>
-            
-            <!-- 1. Selection Toolbars -->
-            <div class="mb-3">
-                <span class="text-muted d-block mb-1 font-xs">Available Fields:</span>
-                <div class="d-flex flex-wrap gap-1 mb-2">
-                    <template x-for="field in fields" :key="field">
-                        <button type="button" class="btn btn-xs btn-outline-primary mb-1 mr-1" @click="addToken('field', field)" x-text="field"></button>
-                    </template>
-                </div>
+//   return `
+//         <div class="formula-builder-wrapper p-3 border rounded bg-light"
+//              x-data="formulaBuilder('${cdt}', '${cdn}', '${encoded_tokens}', '${encoded_fields}')">
 
-                <span class="text-muted d-block mb-1 font-xs">Operators & Numbers:</span>
-                <div class="d-flex flex-wrap gap-1 align-items-center">
-                    <template x-for="op in operators" :key="op">
-                        <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mb-1 mr-1" @click="addToken('operator', op)" x-text="op"></button>
-                    </template>
-                    <button type="button" class="btn btn-xs btn-outline-success mb-1 mr-1" @click="addNumberPrompt()">+ Number</button>
-                    <button type="button" class="btn btn-xs btn-danger mb-1 ml-auto" @click="clearTokens()">Clear</button>
-                </div>
-            </div>
+//             <label class="control-label font-weight-bold mb-2 text-dark">Visual Formula Builder</label>
 
-            <!-- 2. Expression Canvas -->
-            <div class="expression-canvas p-2 bg-white border rounded d-flex flex-wrap align-items-center gap-1 min-h-40px mb-3" style="min-height: 50px;">
-                <template x-if="tokens.length === 0">
-                    <span class="text-muted font-italic font-xs">Click fields and operators above to build your formula...</span>
-                </template>
-                <template x-for="(token, index) in tokens" :key="index">
-                    <div class="badge badge-pill d-flex align-items-center p-2 mr-1 mb-1"
-                         :class="token.type === 'field' ? 'badge-primary' : (token.type === 'operator' ? 'badge-secondary' : 'badge-success')">
-                        <span x-text="token.value" class="mr-1"></span>
-                        <i class="fa fa-times-circle text-white cursor-pointer" @click="removeToken(index)"></i>
-                    </div>
-                </template>
-            </div>
+//             <!-- 1. Selection Toolbars -->
+//             <div class="mb-3">
+//                 <span class="text-muted d-block mb-1 font-xs">Available Fields:</span>
+//                 <div class="d-flex flex-wrap gap-1 mb-2">
+//                     <template x-for="field in fields" :key="field">
+//                         <button type="button" class="btn btn-xs btn-outline-primary mb-1 mr-1" @click="addToken('field', field)" x-text="field"></button>
+//                     </template>
+//                 </div>
 
-            <!-- 3. Live Preview & Status Bar -->
-            <div class="d-flex justify-content-between align-items-center">
-                <span class="text-xs text-muted">Expression: <code x-text="compiledExpression"></code></span>
-                <button type="button" class="btn btn-xs btn-info" @click="testEvaluation()">Test Formula</button>
-            </div>
-            
-            <div class="mt-2" x-show="previewResult !== null">
-                <span class="badge" :class="previewError ? 'badge-danger' : 'badge-success'" x-text="previewResult"></span>
-            </div>
-        </div>
-    `;
-}
+//                 <span class="text-muted d-block mb-1 font-xs">Operators & Numbers:</span>
+//                 <div class="d-flex flex-wrap gap-1 align-items-center">
+//                     <template x-for="op in operators" :key="op">
+//                         <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold mb-1 mr-1" @click="addToken('operator', op)" x-text="op"></button>
+//                     </template>
+//                     <button type="button" class="btn btn-xs btn-outline-success mb-1 mr-1" @click="addNumberPrompt()">+ Number</button>
+//                     <button type="button" class="btn btn-xs btn-danger mb-1 ml-auto" @click="clearTokens()">Clear</button>
+//                 </div>
+//             </div>
+
+//             <!-- 2. Expression Canvas -->
+//             <div class="expression-canvas p-2 bg-white border rounded d-flex flex-wrap align-items-center gap-1 min-h-40px mb-3" style="min-height: 50px;">
+//                 <template x-if="tokens.length === 0">
+//                     <span class="text-muted font-italic font-xs">Click fields and operators above to build your formula...</span>
+//                 </template>
+//                 <template x-for="(token, index) in tokens" :key="index">
+//                     <div class="badge badge-pill d-flex align-items-center p-2 mr-1 mb-1"
+//                          :class="token.type === 'field' ? 'badge-primary' : (token.type === 'operator' ? 'badge-secondary' : 'badge-success')">
+//                         <span x-text="token.value" class="mr-1"></span>
+//                         <i class="fa fa-times-circle text-white cursor-pointer" @click="removeToken(index)"></i>
+//                     </div>
+//                 </template>
+//             </div>
+
+//             <!-- 3. Live Preview & Status Bar -->
+//             <div class="d-flex justify-content-between align-items-center">
+//                 <span class="text-xs text-muted">Expression: <code x-text="compiledExpression"></code></span>
+//                 <button type="button" class="btn btn-xs btn-info" @click="testEvaluation()">Test Formula</button>
+//             </div>
+
+//             <div class="mt-2" x-show="previewResult !== null">
+//                 <span class="badge" :class="previewError ? 'badge-danger' : 'badge-success'" x-text="previewResult"></span>
+//             </div>
+//         </div>
+//     `;
+// }
 
 function load_alpine(callback) {
   if (window.Alpine) {

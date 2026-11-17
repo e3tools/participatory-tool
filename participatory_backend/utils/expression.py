@@ -1,5 +1,14 @@
 import frappe
-from frappe.utils import flt, cint
+from frappe.utils import (
+    flt,
+    cint,
+    getdate,
+    get_datetime,
+    date_diff,
+    add_days,
+    nowdate,
+    now_datetime,
+)
 
 
 def evaluate_formula(formula_tokens, row_data=None, doctype=None, target_field=None):
@@ -41,6 +50,10 @@ def evaluate_formula(formula_tokens, row_data=None, doctype=None, target_field=N
                     "Select",
                 ]:
                     field_types[f.fieldname] = "string"
+                elif f.fieldtype in ["Date", "Datetime"]:
+                    field_types[f.fieldname] = "date"
+                elif f.fieldtype == "Time":
+                    field_types[f.fieldname] = "time"
                 else:
                     field_types[f.fieldname] = "other"
 
@@ -57,15 +70,33 @@ def evaluate_formula(formula_tokens, row_data=None, doctype=None, target_field=N
             }
 
         # 2. Build evaluation context & inject safe helper functions ('flt').  (combining real data with mock defaults)
-        evaluation_context = {"flt": flt, "cint": cint, "round": round, "abs": abs}
+        evaluation_context = {
+            "flt": flt,
+            "cint": cint,
+            "round": round,
+            "abs": abs,
+            "date_diff": date_diff,
+            "add_days": add_days,
+            "getdate": getdate,
+            "get_datetime": get_datetime,
+            "today": nowdate,
+            "now": now_datetime,
+        }
 
         is_dry_run = False
 
         for field in referenced_fields:
             val = row_data.get(field)
+            ftype = field_types.get(field, "numeric")
             if val is None or val == "":
                 # Data is missing/empty -> Use safe mock value (1.0 prevents division-by-zero errors during testing)
-                evaluation_context[field] = 1.0
+                # Provide safe mock values depending on field type for dry-run
+                if ftype == "date":
+                    evaluation_context[field] = nowdate()
+                elif ftype == "time":
+                    evaluation_context[field] = "00:00:00"
+                else:
+                    evaluation_context[field] = 1.0
                 is_dry_run = True
             else:
                 evaluation_context[field] = val
@@ -76,13 +107,24 @@ def evaluate_formula(formula_tokens, row_data=None, doctype=None, target_field=N
         #     if key not in evaluation_context:
         #         evaluation_context[key] = flt(val) if val not in [None, ""] else 0.0
 
+        for key, val in row_data.items():
+            if key not in evaluation_context:
+                evaluation_context[key] = val if val is not None else ""
+
         # Build expression string with safe flt wrappers
         expression_parts = []
         for t in formula_tokens:
-            if t.get("type") == "field":
-                expression_parts.append(f"flt({t.get('value')})")
+            t_type = t.get("type")
+            t_val = t.get("value")
+            if t_type == "field":
+                ftype = field_types.get(t_val, "numeric")
+                if ftype == "numeric":
+                    expression_parts.append(f"flt({t_val})")
+                else:
+                    expression_parts.append(str(t_val))
+                # expression_parts.append(f"flt({t.get('value')})")
             else:
-                expression_parts.append(str(t.get("value")))
+                expression_parts.append(str(t_val))
 
         expression = " ".join(expression_parts)
 
@@ -137,7 +179,21 @@ def validate_expression_safety_and_types(expression, allowed_fields, field_types
     """
     import ast
 
-    ALLOWED_FUNCTIONS = {"flt", "cint", "str", "abs", "round", "min", "max"}
+    ALLOWED_FUNCTIONS = {
+        "flt",
+        "cint",
+        "str",
+        "abs",
+        "round",
+        "min",
+        "max",
+        "date_diff",
+        "add_days",
+        "getdate",
+        "get_datetime",
+        "today",
+        "now",
+    }
 
     try:
         tree = ast.parse(expression, mode="eval")
