@@ -68,8 +68,8 @@ RUN useradd -ms /bin/bash frappe \
     && chown -R frappe:frappe /var/lib/nginx \
     && chown -R frappe:frappe /run/nginx.pid
 
-COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
-COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
+# COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
+# COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
 
 FROM base AS builder
 
