@@ -284,6 +284,63 @@ def get_doc_names(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist(allow_guest=True)
 def get_doctype(doctype: str, with_parent: int = 0):
     def filter_backend_only_fields():
+        if meta:
+            # check if there is a matching Engagement Form
+            if meta.module == "Engage":
+                backend_fields = EngageUtil.get_backend_only_fields(meta.name)
+                backend_field_names = [y.field_name for y in backend_fields]
+                meta.fields = [
+                    x for x in meta.fields if x.fieldname not in backend_field_names
+                ]
+
+    def override_formula_and_select_multiple_fields():
+        """
+        We want to create a new property `formula` to store the formula
+        This is because Frappe does not allow customization of core DocTypes otherwise we
+        would have added a Custom Field directly to DocField.
+
+        Also create is_select_multiple and select_multiple_choices properties when the field type is `Select Multiple`
+        """
+        form = frappe.db.exists("Engagement Form", doctype)
+        if form:
+            frm = frappe.get_doc("Engagement Form", doctype)
+            # Get formula fields
+            formula_fields = [x for x in frm.form_fields if x.formula]
+            if formula_fields:
+                for form_fld in formula_fields:
+                    for doctype_fld in meta.fields:
+                        if form_fld.field_name == doctype_fld.fieldname:
+                            doctype_fld.update({"formula": form_fld.formula})
+                            break
+
+            # Get SElect Multiple fields
+            select_multiple_fields = [
+                x for x in frm.form_fields if x.field_type == "Select Multiple"
+            ]
+            if select_multiple_fields:
+                for sm_fld in select_multiple_fields:
+                    for doctype_fld in meta.fields:
+                        if sm_fld.field_name == doctype_fld.fieldname:
+                            doctype_fld.update(
+                                {
+                                    "is_select_multiple": 1,
+                                    "select_multiple_choices": sm_fld.field_choices,
+                                }
+                            )
+                            break
+
+    meta = frappe.get_meta(doctype=doctype)
+    if meta:
+        override_formula_and_select_multiple_fields()
+        filter_backend_only_fields()
+
+    frappe.response.docs.extend([meta])
+    return meta
+
+
+@frappe.whitelist(allow_guest=True)
+def get_doctype3(doctype: str, with_parent: int = 0):
+    def filter_backend_only_fields():
         if res_doctype:
             # check if there is a matching Engagement Form
             if res_doctype.module == "Engage":
