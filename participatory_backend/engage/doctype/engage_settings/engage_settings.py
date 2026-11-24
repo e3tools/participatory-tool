@@ -14,6 +14,7 @@ class EngageSettings(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		android_app_download_link: DF.Data | None
 		app_introduction: DF.SmallText
 		app_name: DF.Data
 		app_slogan: DF.Data
@@ -28,6 +29,7 @@ class EngageSettings(Document):
 		county_name: DF.Data
 		county_slogan: DF.Data
 		data_consent_statement: DF.TextEditor | None
+		ios_app_download_link: DF.Data | None
 		logo: DF.AttachImage | None
 		mobile_app_url: DF.Data | None
 		preview_forms_in_mobile_app: DF.Check

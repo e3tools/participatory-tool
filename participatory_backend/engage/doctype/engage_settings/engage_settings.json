@@ -21,6 +21,8 @@
   "section_break_oonq",
   "preview_forms_in_mobile_app",
   "mobile_app_url",
+  "android_app_download_link",
+  "ios_app_download_link",
   "website_footer_details_tab",
   "footer_section",
   "column_1_title",
@@ -266,13 +268,23 @@
    "fieldname": "section_break_oonq",
    "fieldtype": "Section Break",
    "label": "Mobile App"
+  },
+  {
+   "fieldname": "android_app_download_link",
+   "fieldtype": "Data",
+   "label": "Android App Download Link"
+  },
+  {
+   "fieldname": "ios_app_download_link",
+   "fieldtype": "Data",
+   "label": "IOS App Download Link"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-15 11:54:51.845397",
+ "modified": "2026-11-24 08:15:24.067103",
  "modified_by": "Administrator",
  "module": "Engage",
  "name": "Engage Settings",

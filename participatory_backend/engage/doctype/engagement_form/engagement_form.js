@@ -208,40 +208,34 @@ frappe.ui.form.on("Engagement Form", {
     if (!frm.is_new() && !frm.doc.field_is_table) {
       if (frm.doc.enable_web_form && !frm.doc.user_cannot_create) {
         frm.add_custom_button(
-          __("Public View", [__(frm.doc.name)]),
+          __("Preview Form", [__(frm.doc.name)]),
           async () => {
-            frappe.db.get_value(
-              "Engage Settings",
-              { name: "Engage Settings" },
-              ["preview_forms_in_mobile_app"],
-              (r) => {
-                if (r) {
-                  let isMobilePreview = r.preview_forms_in_mobile_app == "1";
-                  let url = `/${frappe.router.slug(frm.doc.route)}/new`;
-                  if (isMobilePreview) {
-                    if (frm.doc.mobile_preview_url) {
-                      url = `${frm.doc.mobile_preview_url}`;
-                    }
-                  }
-                  window.open(`${url}`, "_blank");
-                }
-              },
-            );
+            preview_form(frm);
           },
           __("Actions"),
         );
       } else {
-        frm.remove_custom_button(__("Public View"), __("Actions"));
+        frm.remove_custom_button(__("Preview Form"), __("Actions"));
       }
 
       if (!frm.doc.user_cannot_create) {
         frm.add_custom_button(
-          __("Create engagement", [__(frm.doc.name)]),
+          __("View Active Engagements", [__(frm.doc.name)]),
           () => {
-            frm.events.make_engagement(frm);
+            // frm.events.make_engagement(frm);
+            frappe.set_route("List", "Engagement", {
+              engagement_form: frm.doc.name,
+            });
           },
           __("Actions"),
         );
+        // frm.add_custom_button(
+        //   __("Create engagement", [__(frm.doc.name)]),
+        //   () => {
+        //     frm.events.make_engagement(frm);
+        //   },
+        //   __("Actions"),
+        // );
       }
     }
   },
@@ -911,6 +905,26 @@ frappe.ui.form.on("Engagement Form Field", {
     }
   },
 });
+
+function preview_form(frm) {
+  frappe.db.get_value(
+    "Engage Settings",
+    { name: "Engage Settings" },
+    ["preview_forms_in_mobile_app"],
+    (r) => {
+      if (r) {
+        let isMobilePreview = r.preview_forms_in_mobile_app == "1";
+        let url = `/${frappe.router.slug(frm.doc.route)}/new`;
+        if (isMobilePreview) {
+          if (frm.doc.mobile_preview_url) {
+            url = `${frm.doc.mobile_preview_url}`;
+          }
+        }
+        window.open(`${url}`, "_blank");
+      }
+    },
+  );
+}
 
 function register_formula_builder_component(frm) {
   if (frm.doc.__islocal) {
