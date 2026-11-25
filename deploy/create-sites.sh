@@ -10,6 +10,8 @@ BENCH_DIR="/home/frappe/frappe-bench"
 # Ensure we are operating inside the bench directory
 cd "$BENCH_DIR"
 
+ENGAGE_APPS="insights gis participatory_backend"
+
 # Collect site names passed as arguments (supports a single site or a space-separated list of sites)
 SITES_TO_CREATE=("$@")
 
@@ -31,7 +33,7 @@ if [ ${#SITES_TO_CREATE[@]} -eq 0 ]; then
 fi
 
 # Set fallback default site using the first site in the list or NYERI_SITE_NAME
-DEFAULT_CURRENT_SITE="${SITES_TO_CREATE[0]:-$NYERI_SITE_NAME}"
+DEFAULT_CURRENT_SITE="${SITES_TO_CREATE[0]:-frontend.site}"
 if [ -n "$DEFAULT_CURRENT_SITE" ]; then
   echo "$DEFAULT_CURRENT_SITE" > sites/current_site.txt
 fi
