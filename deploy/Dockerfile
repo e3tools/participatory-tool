@@ -22,7 +22,7 @@ USER frappe
 WORKDIR /home/frappe/frappe-bench
 
 RUN echo "Installing base apps"
-RUN bench get-app --branch main insights https://github.com/frappe/insights.git
+RUN bench get-app insights https://github.com/frappe/insights.git --branch version-3
 RUN bench get-app gis https://github.com/e3tools/participatory-tool-gis.git --branch main
 RUN bench get-app participatory_backend https://github.com/e3tools/participatory-tool.git --branch main
  
