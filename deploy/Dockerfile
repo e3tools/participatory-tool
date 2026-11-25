@@ -91,7 +91,10 @@ RUN chmod +x /home/frappe/frappe-bench/create-multiple-sites.sh
 #  --build-arg ENTRYPOINT_SCRIPT=create-multiple-sites.sh \
 #  -t my-app:worker .
 
-ARG ENTRYPOINT_SCRIPT=create-single-site.sh
-
-ENTRYPOINT ["/home/frappe/frappe-bench/${ENTRYPOINT_SCRIPT}"]
 # ENTRYPOINT ["/home/frappe/frappe-bench/create-sites.sh"]
+
+# ARG values disappear after the image build unless promoted to ENV
+ARG ENTRYPOINT_SCRIPT=create-single-site.sh
+ENV ENTRYPOINT_SCRIPT=${ENTRYPOINT_SCRIPT}
+
+ENTRYPOINT ["/bin/bash", "-c", "exec /home/frappe/frappe-bench/${ENTRYPOINT_SCRIPT}"]
