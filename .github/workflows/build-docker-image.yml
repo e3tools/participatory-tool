@@ -17,9 +17,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Build Docker image
-      run: docker build . --file Dockerfile --tag stevenyaga/frappe-backend:latest
+    - name: Build Docker image - Single Site
+      run: docker build . --file deploy/Dockerfile --build-arg ENTRYPOINT_SCRIPT=create-single-site.sh --tag stevenyaga/frappe-backend:latest
+    - name: Build Docker image - Multiple Sites
+      run: docker build . --file deploy/Dockerfile --build-arg ENTRYPOINT_SCRIPT=create-multiple-sites.sh --tag stevenyaga/frappe-backend-multiple-sites:latest
     - name: Push image to Docker Hub
       run: |
         docker login -u stevenyaga -p ${{ secrets.DOCKER_HUB_TOKEN }}
         docker push stevenyaga/frappe-backend:latest
+        docker push stevenyaga/frappe-backend-multiple-sites:latest
