@@ -22,10 +22,10 @@ USER frappe
 WORKDIR /home/frappe/frappe-bench
 
 RUN echo "Installing base apps"
-RUN bench get-app insights https://github.com/frappe/insights.git --branch version-3 && bench build --app insights
-RUN bench get-app gis https://github.com/e3tools/participatory-tool-gis.git --branch main && bench build --app gis
-RUN bench get-app participatory_backend https://github.com/e3tools/participatory-tool.git --branch main && bench build --app participatory_backend
-RUN bench get-app project_monitor https://github.com/e3tools/project-tracking-backend.git --branch main && bench build --app project_monitor
+RUN bench get-app insights https://github.com/frappe/insights.git --branch version-3 \
+    && bench get-app gis https://github.com/e3tools/participatory-tool-gis.git --branch main \
+    && bench get-app participatory_backend https://github.com/e3tools/participatory-tool.git --branch main \
+    && bench get-app project_monitor https://github.com/e3tools/project-tracking-backend.git --branch main && bench build
  
 RUN echo "Install requirements.txt"
 
@@ -83,9 +83,9 @@ COPY --chown=frappe:frappe deploy/create-sites.sh /home/frappe/frappe-bench/crea
 COPY --chown=frappe:frappe deploy/create-single-site.sh /home/frappe/frappe-bench/create-single-site.sh
 COPY --chown=frappe:frappe deploy/create-multiple-sites.sh /home/frappe/frappe-bench/create-multiple-sites.sh
 
-RUN chmod +x /home/frappe/frappe-bench/create-sites.sh
-RUN chmod +x /home/frappe/frappe-bench/create-single-site.sh
-RUN chmod +x /home/frappe/frappe-bench/create-multiple-sites.sh
+RUN chmod +x /home/frappe/frappe-bench/create-sites.sh \
+    && chmod +x /home/frappe/frappe-bench/create-single-site.sh \
+    && chmod +x /home/frappe/frappe-bench/create-multiple-sites.sh
 
 # make this `ENTRYPOINT_SCRIPT` argument to allow creating single and multiple sites 
 # An example on how to call:
