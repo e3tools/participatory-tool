@@ -102,4 +102,7 @@ ENV ENTRYPOINT_SCRIPT=${ENTRYPOINT_SCRIPT}
 RUN echo "======APPS FOLDER CONTENTS======" \
     && ls /home/frappe/frappe-bench/apps
 
+RUN echo "======PROJECT MONITOR FOLDER CONTENTS======" \
+    && ls /home/frappe/frappe-bench/apps/project_monitor
+
 ENTRYPOINT ["/bin/bash", "-c", "exec /home/frappe/frappe-bench/${ENTRYPOINT_SCRIPT}"]
