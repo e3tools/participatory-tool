@@ -29,6 +29,9 @@ RUN bench get-app insights https://github.com/frappe/insights.git --branch versi
  
 RUN echo "Install requirements.txt"
 
+RUN echo "======APPS FOLDER CONTENTS======"
+RUN ls /home/frappe/frappe-bench/apps 
+
 # prevent any pip command in your Dockerfile from upgrading NumPy to 2.x
 RUN echo "numpy<2" > /tmp/pip-constraints.txt
 ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
