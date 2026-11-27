@@ -25,6 +25,7 @@ RUN echo "Installing base apps"
 RUN bench get-app insights https://github.com/frappe/insights.git --branch version-3 && bench build --app insights
 RUN bench get-app gis https://github.com/e3tools/participatory-tool-gis.git --branch main && bench build --app gis
 RUN bench get-app participatory_backend https://github.com/e3tools/participatory-tool.git --branch main && bench build --app participatory_backend
+RUN bench get-app project_monitor https://github.com/e3tools/project-tracking-backend.git --branch main && bench build --app project_monitor
  
 RUN echo "Install requirements.txt"
 
