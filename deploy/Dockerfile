@@ -99,7 +99,7 @@ RUN chmod +x /home/frappe/frappe-bench/create-sites.sh \
 ARG ENTRYPOINT_SCRIPT=create-single-site.sh
 ENV ENTRYPOINT_SCRIPT=${ENTRYPOINT_SCRIPT}
 
-RUN echo "======APPS FOLDER CONTENTS======"
-RUN ls /home/frappe/frappe-bench/apps
+RUN echo "======APPS FOLDER CONTENTS======" \
+    && ls /home/frappe/frappe-bench/apps
 
 ENTRYPOINT ["/bin/bash", "-c", "exec /home/frappe/frappe-bench/${ENTRYPOINT_SCRIPT}"]
