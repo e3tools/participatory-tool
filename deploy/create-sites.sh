@@ -10,7 +10,7 @@ BENCH_DIR="/home/frappe/frappe-bench"
 # Ensure we are operating inside the bench directory
 cd "$BENCH_DIR"
 
-ENGAGE_APPS="insights gis participatory_backend"
+ENGAGE_APPS="insights gis participatory_backend project_monitor"
 
 # Collect site names passed as arguments (supports a single site or a space-separated list of sites)
 SITES_TO_CREATE=("$@")
