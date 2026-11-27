@@ -29,9 +29,6 @@ RUN bench get-app insights https://github.com/frappe/insights.git --branch versi
  
 RUN echo "Install requirements.txt"
 
-RUN echo "======APPS FOLDER CONTENTS======"
-RUN ls /home/frappe/frappe-bench/apps 
-
 # prevent any pip command in your Dockerfile from upgrading NumPy to 2.x
 RUN echo "numpy<2" > /tmp/pip-constraints.txt
 ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
@@ -101,5 +98,8 @@ RUN chmod +x /home/frappe/frappe-bench/create-sites.sh \
 # ARG values disappear after the image build unless promoted to ENV
 ARG ENTRYPOINT_SCRIPT=create-single-site.sh
 ENV ENTRYPOINT_SCRIPT=${ENTRYPOINT_SCRIPT}
+
+RUN echo "======APPS FOLDER CONTENTS======"
+RUN ls /home/frappe/frappe-bench/apps
 
 ENTRYPOINT ["/bin/bash", "-c", "exec /home/frappe/frappe-bench/${ENTRYPOINT_SCRIPT}"]
